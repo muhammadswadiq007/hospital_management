@@ -1,2 +1,137 @@
-# hospital_management
-Hospital Management System for Odoo 20 — HL7 FHIR R4 API, ICD-10/LOINC/ATC coding, role-based access &amp; audit logging
+# Hospital Management (FHIR) for Odoo 20
+
+A custom Odoo 20 module for running an outpatient clinic or small hospital: registration, appointments, consultations, vital signs, diagnoses, prescriptions, laboratory and billing. Clinical data is coded with international standards and exposed through an **HL7 FHIR R4** API, so other health systems can read it.
+
+## Features
+
+| Area | What it does |
+|---|---|
+| **Registration** | Patients with automatic medical record numbers (`MRN/2026/00001`), practitioners linked to Odoo users |
+| **Appointments** | Booking with list and calendar views; Check In automatically opens a visit |
+| **Encounters (visits)** | Start → Finish workflow; the record locks when the visit is finished |
+| **Vital signs** | Temperature, BP, pulse, respiratory rate, SpO₂, weight, height. Coded with **LOINC**, with range checks to catch typing errors |
+| **Diagnoses** | Picked from **ICD-10** (26 common codes included; more can be added) |
+| **Prescriptions** | Dose, route, frequency (OD/BD/TDS/QID/STAT/PRN), duration, auto-calculated quantity. Drugs coded with **WHO ATC**, routes with **SNOMED CT**. Printable PDF prescription |
+| **Laboratory** | Doctor orders → lab worklist → result released → doctor notified. Normal ranges with automatic Low / High / Positive flags. Tests coded with **LOINC** |
+| **Billing** | Cash or insurance invoices per visit (consultation + drugs + lab tests) through Odoo Invoicing; payments and receipts |
+| **Security & audit** | Role-based access, field-level privacy, admin-only amendments with a mandatory reason, tamper-proof access log |
+
+## Roles
+
+| Role | Can | Cannot |
+|---|---|---|
+| Receptionist | Register patients, book and check in appointments | See any clinical data, delete patients |
+| Nurse | Everything a receptionist can + read all visits, record vital signs | Diagnose, prescribe, edit visits |
+| Doctor | Everything a nurse can + diagnose, prescribe and order tests **for their own patients** | Edit another doctor's visits, enter lab results |
+| Lab Technician | Work the lab worklist and release results | See notes, diagnoses or prescriptions |
+| Cashier | Invoice finished visits and take payments | See any clinical data |
+| Administrator | Everything, including reopening closed visits and reading the access log | — |
+
+## FHIR R4 API
+
+Base URL: `http://<server>:<port>/fhir/R4/`
+
+| Resource | Source in Odoo | Example search |
+|---|---|---|
+| `Patient` | Patients | `Patient?family=wanjiru`, `Patient?identifier=MRN/2026/00001` |
+| `Practitioner` | Practitioners | `Practitioner?name=otieno` |
+| `Appointment` | Appointments | `Appointment?patient=Patient/1&status=booked` |
+| `Encounter` | Visits | `Encounter?patient=Patient/1&status=finished` |
+| `Observation` | Vital signs | `Observation?patient=Patient/1&code=http://loinc.org\|8310-5` |
+| `Condition` | Diagnoses | `Condition?patient=Patient/1&code=B50.9` |
+| `MedicationRequest` | Prescriptions | `MedicationRequest?patient=Patient/1&status=active` |
+| `ServiceRequest` | Lab orders | `ServiceRequest?patient=Patient/1` |
+| `DiagnosticReport` | Released lab results | `DiagnosticReport?patient=Patient/1` |
+| `AuditEvent` | Access log (admins only) | `AuditEvent?patient=Patient/1` |
+
+Also available:
+- `GET /fhir/R4/metadata`: CapabilityStatement
+- `GET /fhir/R4/Patient/<id>/$everything`: the patient's complete record in one Bundle
+
+**Authentication:** create an Odoo API key with scope **FHIR API** (My Preferences → Account Security → Create API Key) and send it as a bearer token:
+
+```bash
+curl -H "Authorization: Bearer <API_KEY>" http://localhost:8070/fhir/R4/Patient/1
+```
+
+A logged-in browser session also works. Results always follow the user's role: a receptionist's key gets `403` on clinical resources. Every API read is recorded in the access log.
+
+## Installation
+
+Requires **Odoo 20** (Python 3.12+, PostgreSQL 16+). Depends on `mail` and `account` (Invoicing); both are installed automatically.
+
+1. Copy the `hospital_management` folder into your addons path (e.g. `~/odoo20/addons`).
+2. Restart Odoo, enable developer mode, then **Apps → Update Apps List**.
+3. Search for **Hospital Management (FHIR)** and click **Activate**.
+4. **One-time accounting setup:** Invoicing → Configuration → Settings → **Fiscal Localization** → choose your country (e.g. Kenya) → Save.
+5. Settings → Users: give each staff member a **Hospital** role (plus **Hospital Laboratory** / **Hospital Billing** where needed).
+
+### Running with Docker
+
+```yaml
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: [POSTGRES_DB=postgres, POSTGRES_USER=odoo, POSTGRES_PASSWORD=odoo]
+    volumes: [odoo20-db-data:/var/lib/postgresql/data]
+  web:
+    image: odoo:20.0
+    depends_on: [db]
+    ports: ["8070:8069"]
+    environment: [HOST=db, USER=odoo, PASSWORD=odoo]
+    volumes:
+      - odoo20-web-data:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ./addons:/mnt/extra-addons
+volumes:
+  odoo20-db-data:
+  odoo20-web-data:
+```
+
+In `config/odoo.conf`, set `http_interface = 0.0.0.0`. Odoo 20 listens only on `127.0.0.1` by default, which Docker cannot reach.
+
+Upgrade after pulling changes:
+```bash
+docker compose exec web odoo -d <database> -u hospital_management --stop-after-init --no-http
+docker compose restart web
+```
+
+## Configuration
+
+Under **Hospital → Configuration**:
+- **Practitioners**: link each doctor to their Odoo user (required for "own patients only" rules)
+- **ICD-10 Codes**, **Medications**, **Lab Tests**: extend the starter lists; set prices and lab normal ranges
+- **Insurers**: companies that receive insurance invoices
+- **Access Log**: who viewed, exported or amended which patient's records
+
+Starter prices are examples in KES, and lab normal ranges are general adult values. Set your own before real use.
+
+## Project structure
+
+```
+hospital_management/
+├── models/        patient, practitioner, appointment, encounter, observation, condition,
+│                  medication, lab, billing, audit, fhir_utils
+├── controllers/   fhir.py — the FHIR R4 REST API
+├── views/         screens and menus
+├── security/      roles (hms_security.xml) and access rules (ir.access.csv)
+├── data/          sequences, ICD-10 codes, drugs, lab tests, consultation products
+└── report/        printable prescription
+```
+
+## Odoo 20 notes for developers
+
+Changes from Odoo 19 that this module uses:
+- Access rights live in `security/ir.access.csv` (`id,name,model_id,group_id/id,operation,domain`). This replaces `ir.model.access.csv` and record rules.
+- Groups use `privilege_id` / `user_ids`; users use `group_ids`.
+- SQL constraints use `models.Constraint(...)` instead of `_sql_constraints`.
+- `ir.actions.report` no longer has `report_file`.
+- API keys must have an expiry date; routes can use `auth='bearer'` with a custom `bearer_scope`.
+
+## Author
+
+Muhammadswadiq ([@muhammadswadiq007](https://github.com/muhammadswadiq007))
+
+## License
+
+LGPL-3
