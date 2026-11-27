@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Lab test catalogue (Configuration) -->
+    <record id="view_hms_lab_test_list" model="ir.ui.view">
+        <field name="name">hms.lab.test.list</field>
+        <field name="model">hms.lab.test</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="loinc_code"/>
+                <field name="specimen"/>
+                <field name="result_type"/>
+                <field name="unit"/>
+                <field name="ucum_code" optional="hide"/>
+                <field name="ref_low"/>
+                <field name="ref_high"/>
+                <field name="list_price"/>
+                <field name="loinc_display" optional="hide"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_hms_lab_test" model="ir.actions.act_window">
+        <field name="name">Lab Tests</field>
+        <field name="res_model">hms.lab.test</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Lab requests (the lab's worklist) -->
+    <record id="view_hms_lab_request_list" model="ir.ui.view">
+        <field name="name">hms.lab.request.list</field>
+        <field name="model">hms.lab.request</field>
+        <field name="arch" type="xml">
+            <list create="false" decoration-danger="interpretation in ('L', 'H', 'POS')"
+                  decoration-muted="status == 'revoked'"
+                  decoration-bf="priority in ('urgent', 'stat') and status == 'active'">
+                <field name="name"/>
+                <field name="authored_on"/>
+                <field name="patient_id"/>
+                <field name="test_id"/>
+                <field name="priority"/>
+                <field name="practitioner_id"/>
+                <field name="result_display"/>
+                <field name="interpretation" widget="badge"
+                       decoration-danger="interpretation in ('L', 'H', 'POS')"
+                       decoration-success="interpretation in ('N', 'NEG')"/>
+                <field name="status" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_lab_request_form" model="ir.ui.view">
+        <field name="name">hms.lab.request.form</field>
+        <field name="model">hms.lab.request</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_complete" string="Release Result" type="object" class="btn-primary"
+                            invisible="status != 'active'" groups="hospital_management.group_hms_lab"/>
+                    <button name="action_cancel" string="Cancel Test" type="object"
+                            invisible="status != 'active'"/>
+                    <field name="status" widget="statusbar" statusbar_visible="active,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Order">
+                            <field name="patient_id"/>
+                            <field name="test_id" readonly="1"/>
+                            <field name="priority" readonly="1"/>
+                            <field name="clinical_info" readonly="1"/>
+                            <field name="practitioner_id"/>
+                            <field name="authored_on"/>
+                            <field name="encounter_id" readonly="1" groups="hospital_management.group_hms_nurse"/>
+                        </group>
+                        <group string="Result">
+                            <field name="result_type" invisible="1"/>
+                            <label for="result_value" invisible="result_type != 'numeric'"/>
+                            <div class="o_row" invisible="result_type != 'numeric'">
+                                <field name="result_value" readonly="status != 'active'"/>
+                                <field name="unit" nolabel="1"/>
+                            </div>
+                            <field name="reference_range" invisible="not reference_range"/>
+                            <field name="result_qualitative" invisible="result_type != 'qualitative'"
+                                   readonly="status != 'active'"/>
+                            <field name="result_text" readonly="status != 'active'"/>
+                            <field name="interpretation" invisible="not interpretation" widget="badge"
+                                   decoration-danger="interpretation in ('L', 'H', 'POS')"
+                                   decoration-success="interpretation in ('N', 'NEG')"/>
+                            <field name="resulted_by_id" invisible="not resulted_by_id"/>
+                            <field name="resulted_on" invisible="not resulted_on"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hms_lab_request_search" model="ir.ui.view">
+        <field name="name">hms.lab.request.search</field>
+        <field name="model">hms.lab.request</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="patient_id"/>
+                <field name="test_id"/>
+                <field name="name"/>
+                <filter name="pending" string="Awaiting Result" domain="[('status', '=', 'active')]"/>
+                <filter name="urgent" string="Urgent / STAT" domain="[('priority', 'in', ('urgent', 'stat'))]"/>
+                <filter name="abnormal" string="Abnormal" domain="[('interpretation', 'in', ('L', 'H', 'POS'))]"/>
+                <group>
+                    <filter name="group_test" string="Test" context="{'group_by': 'test_id'}"/>
+                    <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_lab_request" model="ir.actions.act_window">
+        <field name="name">Lab Requests</field>
+        <field name="res_model">hms.lab.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+</odoo>

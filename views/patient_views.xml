@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hms_patient_list" model="ir.ui.view">
+        <field name="name">hms.patient.list</field>
+        <field name="model">hms.patient</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="mrn"/>
+                <field name="name"/>
+                <field name="gender"/>
+                <field name="birth_date"/>
+                <field name="phone"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_patient_form" model="ir.ui.view">
+        <field name="name">hms.patient.form</field>
+        <field name="model">hms.patient</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="mrn" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Identity">
+                            <field name="given_name"/>
+                            <field name="family_name"/>
+                            <field name="gender"/>
+                            <field name="birth_date"/>
+                            <field name="national_id"/>
+                        </group>
+                        <group string="Billing">
+                            <field name="payer_type"/>
+                            <field name="insurer_id" invisible="payer_type != 'insurance'"
+                                   required="payer_type == 'insurance'"
+                                   context="{'default_is_hms_insurer': True, 'default_is_company': True}"/>
+                            <field name="member_number" invisible="payer_type != 'insurance'"
+                                   required="payer_type == 'insurance'"/>
+                            <field name="partner_id" invisible="not partner_id" groups="account.group_account_invoice"/>
+                        </group>
+                        <group string="Contact">
+                            <field name="phone"/>
+                            <field name="email"/>
+                            <field name="address"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Appointments" name="appointments">
+                            <field name="appointment_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="start"/>
+                                    <field name="practitioner_id"/>
+                                    <field name="reason"/>
+                                    <field name="status" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- Receptionists don't see clinical history at all -->
+                        <page string="Encounters" name="encounters" groups="hospital_management.group_hms_nurse">
+                            <field name="encounter_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="period_start"/>
+                                    <field name="practitioner_id"/>
+                                    <field name="encounter_class"/>
+                                    <field name="status" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Vital Signs" name="vitals" groups="hospital_management.group_hms_nurse">
+                            <field name="observation_ids" readonly="1">
+                                <list>
+                                    <field name="effective"/>
+                                    <field name="code"/>
+                                    <field name="value_display"/>
+                                    <field name="encounter_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Diagnoses" name="diagnoses" groups="hospital_management.group_hms_nurse">
+                            <field name="condition_ids" readonly="1">
+                                <list>
+                                    <field name="recorded_date"/>
+                                    <field name="icd10_id"/>
+                                    <field name="verification_status"/>
+                                    <field name="clinical_status"/>
+                                    <field name="encounter_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Medications" name="medications" groups="hospital_management.group_hms_nurse">
+                            <field name="medication_request_ids" readonly="1">
+                                <list>
+                                    <field name="authored_on"/>
+                                    <field name="medication_id"/>
+                                    <field name="sig"/>
+                                    <field name="quantity"/>
+                                    <field name="status"/>
+                                    <field name="encounter_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Lab Results" name="lab" groups="hospital_management.group_hms_nurse">
+                            <field name="lab_request_ids" readonly="1">
+                                <list decoration-danger="interpretation in ('L', 'H', 'POS')">
+                                    <field name="authored_on"/>
+                                    <field name="test_id"/>
+                                    <field name="result_display"/>
+                                    <field name="interpretation" widget="badge"/>
+                                    <field name="status"/>
+                                    <field name="encounter_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hms_patient_search" model="ir.ui.view">
+        <field name="name">hms.patient.search</field>
+        <field name="model">hms.patient</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="mrn"/>
+                <field name="national_id"/>
+                <field name="phone"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_patient" model="ir.actions.act_window">
+        <field name="name">Patients</field>
+        <field name="res_model">hms.patient</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

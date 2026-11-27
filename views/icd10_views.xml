@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hms_icd10_list" model="ir.ui.view">
+        <field name="name">hms.icd10.list</field>
+        <field name="model">hms.icd10</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_icd10_search" model="ir.ui.view">
+        <field name="name">hms.icd10.search</field>
+        <field name="model">hms.icd10</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_icd10" model="ir.actions.act_window">
+        <field name="name">ICD-10 Codes</field>
+        <field name="res_model">hms.icd10</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_prescription" model="ir.actions.report">
+        <field name="name">Prescription</field>
+        <field name="model">hms.encounter</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hospital_management.report_prescription</field>
+        <field name="print_report_name">'Prescription - %s' % object.name.replace('/', '-')</field>
+        <field name="binding_model_id" ref="model_hms_encounter"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_prescription">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="enc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Prescription</h2>
+                        <div class="row mt-3 mb-4">
+                            <div class="col-6">
+                                <strong>Patient:</strong> <span t-field="enc.patient_id.name"/><br/>
+                                <strong>MRN:</strong> <span t-field="enc.patient_id.mrn"/><br/>
+                                <strong>Date of Birth:</strong> <span t-field="enc.patient_id.birth_date"/><br/>
+                                <strong>Gender:</strong> <span t-field="enc.patient_id.gender"/>
+                            </div>
+                            <div class="col-6">
+                                <strong>Visit:</strong> <span t-field="enc.name"/><br/>
+                                <strong>Date:</strong> <span t-field="enc.period_start"/><br/>
+                                <strong>Prescriber:</strong> <span t-field="enc.practitioner_id.name"/><br/>
+                                <t t-if="enc.practitioner_id.license_number">
+                                    <strong>Reg. No.:</strong> <span t-field="enc.practitioner_id.license_number"/>
+                                </t>
+                            </div>
+                        </div>
+
+                        <p t-if="enc.condition_ids">
+                            <strong>Diagnosis:</strong>
+                            <t t-foreach="enc.condition_ids" t-as="cond">
+                                <span t-out="cond.icd10_id.display_name"/><t t-if="not cond_last">; </t>
+                            </t>
+                        </p>
+
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Medication</th>
+                                    <th>Directions</th>
+                                    <th class="text-end">Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="enc.medication_request_ids.filtered(lambda m: m.status != 'cancelled')" t-as="line">
+                                    <td><t t-out="line_index + 1"/></td>
+                                    <td><span t-out="line.medication_id.display_name"/></td>
+                                    <td><span t-out="line.sig"/></td>
+                                    <td class="text-end"><t t-if="line.quantity" t-out="'%g' % line.quantity"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not enc.medication_request_ids">No medication prescribed.</p>
+
+                        <div class="row mt-5">
+                            <div class="col-6 offset-6 text-center">
+                                <div style="border-top: 1px solid #000; margin-top: 50px; padding-top: 4px;">
+                                    <span t-field="enc.practitioner_id.name"/><br/>Signature &amp; Stamp
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

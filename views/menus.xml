@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_hms_root" name="Hospital" sequence="10"
+              groups="group_hms_receptionist"/>
+
+    <menuitem id="menu_hms_patients" name="Patients" parent="menu_hms_root"
+              action="action_hms_patient" sequence="10"/>
+    <menuitem id="menu_hms_appointments" name="Appointments" parent="menu_hms_root"
+              action="action_hms_appointment" sequence="20"/>
+    <menuitem id="menu_hms_encounters" name="Encounters" parent="menu_hms_root"
+              action="action_hms_encounter" sequence="30" groups="group_hms_nurse"/>
+
+    <menuitem id="menu_hms_lab" name="Laboratory" parent="menu_hms_root"
+              action="action_hms_lab_request" sequence="40"
+              groups="group_hms_lab,group_hms_nurse"/>
+
+    <menuitem id="menu_hms_billing" name="Billing" parent="menu_hms_root" sequence="50"
+              groups="group_hms_cashier"/>
+    <menuitem id="menu_hms_billing_to_invoice" name="Visits to Bill" parent="menu_hms_billing"
+              action="action_hms_billing_visits" sequence="10"/>
+    <menuitem id="menu_hms_billing_invoices" name="Invoices" parent="menu_hms_billing"
+              action="action_hms_invoices" sequence="20"/>
+
+    <menuitem id="menu_hms_config" name="Configuration" parent="menu_hms_root"
+              sequence="90" groups="group_hms_admin"/>
+    <menuitem id="menu_hms_practitioners" name="Practitioners" parent="menu_hms_config"
+              action="action_hms_practitioner" sequence="10"/>
+    <menuitem id="menu_hms_icd10" name="ICD-10 Codes" parent="menu_hms_config"
+              action="action_hms_icd10" sequence="20"/>
+    <menuitem id="menu_hms_medication" name="Medications" parent="menu_hms_config"
+              action="action_hms_medication" sequence="30"/>
+    <menuitem id="menu_hms_lab_test" name="Lab Tests" parent="menu_hms_config"
+              action="action_hms_lab_test" sequence="40"/>
+    <menuitem id="menu_hms_insurers" name="Insurers" parent="menu_hms_config"
+              action="action_hms_insurers" sequence="50"/>
+    <menuitem id="menu_hms_access_log" name="Access Log" parent="menu_hms_config"
+              action="action_hms_access_log" sequence="90"/>
+</odoo>

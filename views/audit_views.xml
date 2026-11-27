@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Access log (read-only) -->
+    <record id="view_hms_access_log_list" model="ir.ui.view">
+        <field name="name">hms.access.log.list</field>
+        <field name="model">hms.access.log</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false" decoration-warning="action == 'amend'"
+                  decoration-info="action == 'export'">
+                <field name="timestamp"/>
+                <field name="user_id"/>
+                <field name="action"/>
+                <field name="channel"/>
+                <field name="patient_id"/>
+                <field name="record_name"/>
+                <field name="ip_address" optional="show"/>
+                <field name="detail" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_access_log_search" model="ir.ui.view">
+        <field name="name">hms.access.log.search</field>
+        <field name="model">hms.access.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="patient_id"/>
+                <field name="user_id"/>
+                <field name="ip_address"/>
+                <filter name="today" string="Today" domain="[('timestamp', '&gt;=', 'today')]"/>
+                <filter name="api" string="Via FHIR API" domain="[('channel', '=', 'api')]"/>
+                <filter name="amendments" string="Amendments" domain="[('action', '=', 'amend')]"/>
+                <filter name="exports" string="Full Exports" domain="[('action', '=', 'export')]"/>
+                <group>
+                    <filter name="group_patient" string="Patient" context="{'group_by': 'patient_id'}"/>
+                    <filter name="group_user" string="User" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_day" string="Day" context="{'group_by': 'timestamp:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_access_log" model="ir.actions.act_window">
+        <field name="name">Access Log</field>
+        <field name="res_model">hms.access.log</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <!-- Amendment wizard -->
+    <record id="view_hms_encounter_amend_wizard" model="ir.ui.view">
+        <field name="name">hms.encounter.amend.wizard.form</field>
+        <field name="model">hms.encounter.amend.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <p>
+                    This reopens a closed visit so its vitals, diagnoses, prescriptions and notes can be corrected.
+                    The reason is saved permanently in the visit history and the access log.
+                </p>
+                <group>
+                    <field name="encounter_id"/>
+                    <field name="reason" placeholder="e.g. Wrong frequency entered for Artemether-Lumefantrine (TDS instead of BD)"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Reopen for Amendment" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

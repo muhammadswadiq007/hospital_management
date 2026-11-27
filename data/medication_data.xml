@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter formulary of common essential medicines, coded with WHO ATC.
+     Admins can add more in Hospital > Configuration > Medications. -->
+<odoo>
+    <data noupdate="1">
+        <record id="med_paracetamol_500" model="hms.medication"><field name="name">Paracetamol</field><field name="strength">500 mg</field><field name="form">tablet</field><field name="atc_code">N02BE01</field></record>
+        <record id="med_paracetamol_syrup" model="hms.medication"><field name="name">Paracetamol</field><field name="strength">120 mg/5 ml</field><field name="form">syrup</field><field name="atc_code">N02BE01</field></record>
+        <record id="med_ibuprofen_400" model="hms.medication"><field name="name">Ibuprofen</field><field name="strength">400 mg</field><field name="form">tablet</field><field name="atc_code">M01AE01</field></record>
+        <record id="med_amoxicillin_500" model="hms.medication"><field name="name">Amoxicillin</field><field name="strength">500 mg</field><field name="form">capsule</field><field name="atc_code">J01CA04</field></record>
+        <record id="med_amoxicillin_susp" model="hms.medication"><field name="name">Amoxicillin</field><field name="strength">125 mg/5 ml</field><field name="form">suspension</field><field name="atc_code">J01CA04</field></record>
+        <record id="med_al_20_120" model="hms.medication"><field name="name">Artemether + Lumefantrine</field><field name="strength">20/120 mg</field><field name="form">tablet</field><field name="atc_code">P01BF01</field></record>
+        <record id="med_ciprofloxacin_500" model="hms.medication"><field name="name">Ciprofloxacin</field><field name="strength">500 mg</field><field name="form">tablet</field><field name="atc_code">J01MA02</field></record>
+        <record id="med_metronidazole_400" model="hms.medication"><field name="name">Metronidazole</field><field name="strength">400 mg</field><field name="form">tablet</field><field name="atc_code">P01AB01</field></record>
+        <record id="med_cotrimoxazole_960" model="hms.medication"><field name="name">Co-trimoxazole</field><field name="strength">960 mg</field><field name="form">tablet</field><field name="atc_code">J01EE01</field></record>
+        <record id="med_ceftriaxone_1g" model="hms.medication"><field name="name">Ceftriaxone</field><field name="strength">1 g</field><field name="form">injection</field><field name="atc_code">J01DD04</field></record>
+        <record id="med_albendazole_400" model="hms.medication"><field name="name">Albendazole</field><field name="strength">400 mg</field><field name="form">tablet</field><field name="atc_code">P02CA03</field></record>
+        <record id="med_ors" model="hms.medication"><field name="name">Oral Rehydration Salts</field><field name="form">sachet</field><field name="atc_code">A07CA</field></record>
+        <record id="med_zinc_20" model="hms.medication"><field name="name">Zinc sulfate</field><field name="strength">20 mg</field><field name="form">tablet</field><field name="atc_code">A12CB01</field></record>
+        <record id="med_omeprazole_20" model="hms.medication"><field name="name">Omeprazole</field><field name="strength">20 mg</field><field name="form">capsule</field><field name="atc_code">A02BC01</field></record>
+        <record id="med_metformin_500" model="hms.medication"><field name="name">Metformin</field><field name="strength">500 mg</field><field name="form">tablet</field><field name="atc_code">A10BA02</field></record>
+        <record id="med_amlodipine_5" model="hms.medication"><field name="name">Amlodipine</field><field name="strength">5 mg</field><field name="form">tablet</field><field name="atc_code">C08CA01</field></record>
+        <record id="med_hctz_25" model="hms.medication"><field name="name">Hydrochlorothiazide</field><field name="strength">25 mg</field><field name="form">tablet</field><field name="atc_code">C03AA03</field></record>
+        <record id="med_salbutamol_inh" model="hms.medication"><field name="name">Salbutamol</field><field name="strength">100 mcg/dose</field><field name="form">inhaler</field><field name="atc_code">R03AC02</field></record>
+        <record id="med_cetirizine_10" model="hms.medication"><field name="name">Cetirizine</field><field name="strength">10 mg</field><field name="form">tablet</field><field name="atc_code">R06AE07</field></record>
+        <record id="med_ferrous_200" model="hms.medication"><field name="name">Ferrous sulfate</field><field name="strength">200 mg</field><field name="form">tablet</field><field name="atc_code">B03AA07</field></record>
+    </data>
+</odoo>

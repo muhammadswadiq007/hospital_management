@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter lab catalogue. LOINC codes checked against loinc.org.
+     Normal ranges are general adult examples: each lab should set its own
+     in Hospital > Configuration > Lab Tests. -->
+<odoo>
+    <data noupdate="1">
+        <record id="lab_malaria_rdt" model="hms.lab.test">
+            <field name="name">Malaria RDT</field>
+            <field name="loinc_code">70569-9</field>
+            <field name="loinc_display">Plasmodium sp Ag [Identifier] in Blood by Rapid immunoassay</field>
+            <field name="specimen">blood</field>
+            <field name="result_type">qualitative</field>
+        </record>
+        <record id="lab_malaria_bs" model="hms.lab.test">
+            <field name="name">Malaria Blood Smear (BS)</field>
+            <field name="loinc_code">32700-7</field>
+            <field name="loinc_display">Microscopic observation [Identifier] in Blood by Malaria smear</field>
+            <field name="specimen">blood</field>
+            <field name="result_type">qualitative</field>
+        </record>
+        <record id="lab_hb" model="hms.lab.test">
+            <field name="name">Haemoglobin (Hb)</field>
+            <field name="loinc_code">718-7</field>
+            <field name="loinc_display">Hemoglobin [Mass/volume] in Blood</field>
+            <field name="unit">g/dL</field><field name="ucum_code">g/dL</field>
+            <field name="ref_low">12</field><field name="ref_high">17.5</field>
+        </record>
+        <record id="lab_wbc" model="hms.lab.test">
+            <field name="name">White Blood Cell Count (WBC)</field>
+            <field name="loinc_code">6690-2</field>
+            <field name="loinc_display">Leukocytes [#/volume] in Blood by Automated count</field>
+            <field name="unit">x10⁹/L</field><field name="ucum_code">10*9/L</field>
+            <field name="ref_low">4</field><field name="ref_high">11</field>
+        </record>
+        <record id="lab_plt" model="hms.lab.test">
+            <field name="name">Platelet Count</field>
+            <field name="loinc_code">777-3</field>
+            <field name="loinc_display">Platelets [#/volume] in Blood by Automated count</field>
+            <field name="unit">x10⁹/L</field><field name="ucum_code">10*9/L</field>
+            <field name="ref_low">150</field><field name="ref_high">400</field>
+        </record>
+        <record id="lab_rbs" model="hms.lab.test">
+            <field name="name">Random Blood Sugar (RBS)</field>
+            <field name="loinc_code">15074-8</field>
+            <field name="loinc_display">Glucose [Moles/volume] in Blood</field>
+            <field name="unit">mmol/L</field><field name="ucum_code">mmol/L</field>
+            <field name="ref_low">3.9</field><field name="ref_high">7.8</field>
+        </record>
+        <record id="lab_hba1c" model="hms.lab.test">
+            <field name="name">HbA1c</field>
+            <field name="loinc_code">4548-4</field>
+            <field name="loinc_display">Hemoglobin A1c/Hemoglobin.total in Blood</field>
+            <field name="unit">%</field><field name="ucum_code">%</field>
+            <field name="ref_low">4</field><field name="ref_high">5.6</field>
+        </record>
+        <record id="lab_creatinine" model="hms.lab.test">
+            <field name="name">Serum Creatinine</field>
+            <field name="loinc_code">14682-9</field>
+            <field name="loinc_display">Creatinine [Moles/volume] in Serum or Plasma</field>
+            <field name="specimen">serum</field>
+            <field name="unit">µmol/L</field><field name="ucum_code">umol/L</field>
+            <field name="ref_low">60</field><field name="ref_high">110</field>
+        </record>
+        <record id="lab_hiv" model="hms.lab.test">
+            <field name="name">HIV 1+2 Antibody Test</field>
+            <field name="loinc_code">7918-6</field>
+            <field name="loinc_display">HIV 1+2 Ab [Presence] in Serum</field>
+            <field name="specimen">serum</field>
+            <field name="result_type">qualitative</field>
+        </record>
+        <record id="lab_pdt" model="hms.lab.test">
+            <field name="name">Pregnancy Test (urine hCG)</field>
+            <field name="loinc_code">2106-3</field>
+            <field name="loinc_display">Choriogonadotropin [Presence] in Urine</field>
+            <field name="specimen">urine</field>
+            <field name="result_type">qualitative</field>
+        </record>
+    </data>
+</odoo>

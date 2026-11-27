@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hms_medication_list" model="ir.ui.view">
+        <field name="name">hms.medication.list</field>
+        <field name="model">hms.medication</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="strength"/>
+                <field name="form"/>
+                <field name="atc_code"/>
+                <field name="list_price" string="Price (per tablet / pack)"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_medication_search" model="ir.ui.view">
+        <field name="name">hms.medication.search</field>
+        <field name="model">hms.medication</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="atc_code"/>
+                <filter name="archived" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_form" string="Form" context="{'group_by': 'form'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_medication" model="ir.actions.act_window">
+        <field name="name">Medications</field>
+        <field name="res_model">hms.medication</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

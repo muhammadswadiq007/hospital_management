@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cashier's view of visits: no clinical details at all -->
+    <record id="view_hms_billing_list" model="ir.ui.view">
+        <field name="name">hms.encounter.billing.list</field>
+        <field name="model">hms.encounter</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="false" delete="false">
+                <field name="name"/>
+                <field name="period_end" string="Finished"/>
+                <field name="patient_id"/>
+                <field name="practitioner_id"/>
+                <field name="encounter_class"/>
+                <field name="billing_state" widget="badge"
+                       decoration-warning="billing_state == 'to_invoice'"
+                       decoration-success="billing_state == 'invoiced'"/>
+                <field name="invoice_id"/>
+                <field name="payment_state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_billing_form" model="ir.ui.view">
+        <field name="name">hms.encounter.billing.form</field>
+        <field name="model">hms.encounter</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <form create="false" delete="false" edit="false">
+                <header>
+                    <button name="action_open_invoice_wizard" string="Create Invoice" type="object" class="btn-primary"
+                            invisible="billing_state != 'to_invoice'"/>
+                    <field name="billing_state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_invoice" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="not invoice_id">
+                            <field name="invoice_id" string="Invoice" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="patient_id"/>
+                            <field name="practitioner_id"/>
+                            <field name="encounter_class"/>
+                        </group>
+                        <group>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                            <field name="payment_state" invisible="not invoice_id" widget="badge"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hms_billing_search" model="ir.ui.view">
+        <field name="name">hms.encounter.billing.search</field>
+        <field name="model">hms.encounter</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="patient_id"/>
+                <field name="name"/>
+                <filter name="to_invoice" string="To Invoice" domain="[('billing_state', 'in', ['to_invoice'])]"/>
+                <filter name="invoiced" string="Invoiced" domain="[('billing_state', 'in', ['invoiced'])]"/>
+                <filter name="unpaid" string="Invoiced, Not Paid"
+                        domain="[('billing_state', 'in', ['invoiced']), ('invoice_id.payment_state', 'not in', ('paid', 'in_payment', 'reversed'))]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_billing_visits" model="ir.actions.act_window">
+        <field name="name">Visits to Bill</field>
+        <field name="res_model">hms.encounter</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_hms_billing_search"/>
+        <field name="context">{'search_default_to_invoice': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('view_hms_billing_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_hms_billing_form')})]"/>
+    </record>
+
+    <record id="action_hms_invoices" model="ir.actions.act_window">
+        <field name="name">Patient Invoices</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('hms_encounter_id', '!=', False)]</field>
+        <field name="context">{'default_move_type': 'out_invoice'}</field>
+    </record>
+
+    <!-- Invoice wizard -->
+    <record id="view_hms_invoice_wizard" model="ir.ui.view">
+        <field name="name">hms.invoice.wizard.form</field>
+        <field name="model">hms.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group>
+                        <field name="encounter_id"/>
+                        <field name="patient_id"/>
+                    </group>
+                    <group>
+                        <field name="payer_type" widget="radio"/>
+                        <field name="insurer_id" invisible="payer_type != 'insurance'"
+                               required="payer_type == 'insurance'" options="{'no_create': True}"/>
+                        <field name="member_number" invisible="payer_type != 'insurance'"
+                               required="payer_type == 'insurance'"/>
+                    </group>
+                </group>
+                <field name="preview" nolabel="1"/>
+                <footer>
+                    <button name="action_create_invoice" string="Create Invoice" type="object" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Insurers -->
+    <record id="action_hms_insurers" model="ir.actions.act_window">
+        <field name="name">Insurers</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('is_hms_insurer', '=', True)]</field>
+        <field name="context">{'default_is_hms_insurer': True, 'default_is_company': True}</field>
+    </record>
+
+    <record id="view_partner_form_hms_insurer" model="ir.ui.view">
+        <field name="name">res.partner.form.hms.insurer</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <field name="category_id" position="after">
+                <field name="is_hms_insurer" invisible="not is_company"/>
+            </field>
+        </field>
+    </record>
+</odoo>

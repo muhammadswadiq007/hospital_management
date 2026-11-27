@@ -1,0 +1,33 @@
+{
+    'name': 'Hospital Management (FHIR)',
+    'version': '20.0.1.6.0',
+    'summary': 'Hospital management with HL7 FHIR R4-aligned data and API',
+    'category': 'Services',
+    'author': 'Muhammadswadiq',
+    'license': 'LGPL-3',
+    'depends': ['base', 'mail', 'account'],
+    'data': [
+        # Groups must load before the access file that references them
+        'security/hms_security.xml',
+        # Odoo 20: access rights live in ir.access.csv (replaces ir.model.access.csv + ir.rule)
+        'security/ir.access.csv',
+        'data/sequence.xml',
+        'data/icd10_data.xml',
+        'data/medication_data.xml',
+        'data/lab_test_data.xml',
+        'data/billing_data.xml',
+        'views/practitioner_views.xml',
+        'views/appointment_views.xml',
+        'views/icd10_views.xml',
+        'views/medication_views.xml',
+        'views/lab_views.xml',
+        'views/audit_views.xml',
+        'views/billing_views.xml',
+        'views/encounter_views.xml',
+        'views/patient_views.xml',
+        'views/menus.xml',
+        'report/prescription_report.xml',
+    ],
+    'application': True,
+    'installable': True,
+}

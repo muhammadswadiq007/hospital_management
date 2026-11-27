@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Consultation fees (example KES prices: change them on the product) -->
+    <data noupdate="1">
+        <record id="product_consult_outpatient" model="product.product">
+            <field name="name">Outpatient Consultation</field>
+            <field name="type">service</field>
+            <field name="list_price">1000</field>
+            <field name="default_code">CONS-OP</field>
+            <field name="taxes_id" eval="[(5, 0, 0)]"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+        <record id="product_consult_emergency" model="product.product">
+            <field name="name">Emergency Consultation</field>
+            <field name="type">service</field>
+            <field name="list_price">2000</field>
+            <field name="default_code">CONS-EM</field>
+            <field name="taxes_id" eval="[(5, 0, 0)]"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+        <record id="product_consult_inpatient" model="product.product">
+            <field name="name">Inpatient Admission</field>
+            <field name="type">service</field>
+            <field name="list_price">3000</field>
+            <field name="default_code">CONS-IP</field>
+            <field name="taxes_id" eval="[(5, 0, 0)]"/>
+            <field name="purchase_ok" eval="False"/>
+        </record>
+    </data>
+    <!-- Fill example prices for the starter drugs and tests (only where still empty) -->
+    <function model="hms.medication" name="_hms_fill_default_prices"/>
+    <function model="hms.lab.test" name="_hms_fill_default_prices"/>
+</odoo>

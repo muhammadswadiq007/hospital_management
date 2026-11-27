@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hms_encounter_list" model="ir.ui.view">
+        <field name="name">hms.encounter.list</field>
+        <field name="model">hms.encounter</field>
+        <field name="arch" type="xml">
+            <list decoration-info="status == 'in-progress'" decoration-muted="status == 'cancelled'">
+                <field name="name"/>
+                <field name="period_start"/>
+                <field name="patient_id"/>
+                <field name="practitioner_id"/>
+                <field name="encounter_class"/>
+                <field name="reason"/>
+                <field name="status" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hms_encounter_form" model="ir.ui.view">
+        <field name="name">hms.encounter.form</field>
+        <field name="model">hms.encounter</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_start" string="Start Visit" type="object" class="btn-primary"
+                            invisible="status != 'planned'"/>
+                    <button name="action_finish" string="Finish Visit" type="object" class="btn-primary"
+                            invisible="status != 'in-progress'"/>
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="status not in ('planned', 'in-progress')"/>
+                    <button name="action_open_invoice_wizard" string="Create Invoice" type="object" class="btn-primary"
+                            invisible="billing_state != 'to_invoice'" groups="hospital_management.group_hms_cashier"/>
+                    <button name="action_open_amend_wizard" string="Reopen for Amendment" type="object"
+                            invisible="status != 'finished'" groups="hospital_management.group_hms_admin"/>
+                    <field name="status" widget="statusbar" statusbar_visible="planned,in-progress,finished"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="patient_id" readonly="status != 'planned'"/>
+                            <field name="practitioner_id" readonly="status != 'planned'"/>
+                            <field name="encounter_class"/>
+                            <field name="reason"/>
+                        </group>
+                        <group>
+                            <field name="appointment_id" invisible="not appointment_id"/>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                            <field name="billing_state" invisible="1" groups="hospital_management.group_hms_cashier"/>
+                            <field name="invoice_id" invisible="not invoice_id" groups="account.group_account_invoice"/>
+                            <field name="payment_state" invisible="not invoice_id" widget="badge" groups="account.group_account_invoice"/>
+                            <field name="amendment_count" string="Amendments" invisible="not amendment_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Vital Signs" name="vitals">
+                            <field name="observation_ids" readonly="status in ('finished', 'cancelled')">
+                                <list editable="bottom">
+                                    <field name="code"/>
+                                    <field name="value" string="Value / Systolic"/>
+                                    <field name="value_diastolic" invisible="code != 'bp'" required="code == 'bp'"/>
+                                    <field name="unit"/>
+                                    <field name="effective"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Diagnoses" name="diagnoses">
+                            <field name="condition_ids" readonly="status in ('finished', 'cancelled')">
+                                <list editable="bottom">
+                                    <field name="icd10_id" options="{'no_create': True}"/>
+                                    <field name="verification_status"/>
+                                    <field name="clinical_status"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Prescriptions" name="prescriptions">
+                            <field name="medication_request_ids" readonly="status in ('finished', 'cancelled')">
+                                <list editable="bottom">
+                                    <field name="medication_id" options="{'no_create': True}"/>
+                                    <field name="dose"/>
+                                    <field name="dose_unit"/>
+                                    <field name="route"/>
+                                    <field name="frequency"/>
+                                    <field name="duration_days" invisible="frequency == 'stat'"/>
+                                    <field name="quantity"/>
+                                    <field name="instructions" optional="show"/>
+                                    <field name="status" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Lab Tests" name="lab">
+                            <field name="lab_request_ids" readonly="status in ('finished', 'cancelled')">
+                                <list editable="bottom" decoration-danger="interpretation in ('L', 'H', 'POS')"
+                                      decoration-muted="status == 'revoked'">
+                                    <field name="test_id" options="{'no_create': True}" readonly="id"/>
+                                    <field name="priority" readonly="status != 'active'"/>
+                                    <field name="clinical_info" optional="show" readonly="status != 'active'"/>
+                                    <field name="status" readonly="1"/>
+                                    <field name="result_display" readonly="1"/>
+                                    <field name="interpretation" readonly="1" widget="badge"
+                                           decoration-danger="interpretation in ('L', 'H', 'POS')"
+                                           decoration-success="interpretation in ('N', 'NEG')"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Clinical Notes" name="notes">
+                            <field name="clinical_notes" readonly="status in ('finished', 'cancelled')"
+                                   placeholder="History, examination findings, plan..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hms_encounter_search" model="ir.ui.view">
+        <field name="name">hms.encounter.search</field>
+        <field name="model">hms.encounter</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="patient_id"/>
+                <field name="practitioner_id"/>
+                <field name="name"/>
+                <filter name="my_encounters" string="My Encounters"
+                        domain="[('practitioner_id.user_id', '=', uid)]"/>
+                <filter name="in_progress" string="In Progress" domain="[('status', '=', 'in-progress')]"/>
+                <group>
+                    <filter name="group_status" string="Status" context="{'group_by': 'status'}"/>
+                    <filter name="group_class" string="Class" context="{'group_by': 'encounter_class'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hms_encounter" model="ir.actions.act_window">
+        <field name="name">Encounters</field>
+        <field name="res_model">hms.encounter</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

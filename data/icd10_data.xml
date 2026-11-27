@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Starter set of common outpatient diagnoses (WHO ICD-10).
+     Admins can add more in Hospital > Configuration > ICD-10 Codes. -->
+<odoo>
+    <data noupdate="1">
+        <record id="icd10_b50_9" model="hms.icd10"><field name="code">B50.9</field><field name="name">Plasmodium falciparum malaria, unspecified</field></record>
+        <record id="icd10_b54" model="hms.icd10"><field name="code">B54</field><field name="name">Unspecified malaria</field></record>
+        <record id="icd10_a01_0" model="hms.icd10"><field name="code">A01.0</field><field name="name">Typhoid fever</field></record>
+        <record id="icd10_a09_9" model="hms.icd10"><field name="code">A09.9</field><field name="name">Gastroenteritis and colitis of unspecified origin</field></record>
+        <record id="icd10_a15_0" model="hms.icd10"><field name="code">A15.0</field><field name="name">Tuberculosis of lung, confirmed by sputum microscopy</field></record>
+        <record id="icd10_b24" model="hms.icd10"><field name="code">B24</field><field name="name">Unspecified human immunodeficiency virus [HIV] disease</field></record>
+        <record id="icd10_b82_9" model="hms.icd10"><field name="code">B82.9</field><field name="name">Intestinal parasitism, unspecified</field></record>
+        <record id="icd10_d64_9" model="hms.icd10"><field name="code">D64.9</field><field name="name">Anaemia, unspecified</field></record>
+        <record id="icd10_e10_9" model="hms.icd10"><field name="code">E10.9</field><field name="name">Insulin-dependent diabetes mellitus without complications</field></record>
+        <record id="icd10_e11_9" model="hms.icd10"><field name="code">E11.9</field><field name="name">Non-insulin-dependent diabetes mellitus without complications</field></record>
+        <record id="icd10_f32_9" model="hms.icd10"><field name="code">F32.9</field><field name="name">Depressive episode, unspecified</field></record>
+        <record id="icd10_h10_9" model="hms.icd10"><field name="code">H10.9</field><field name="name">Conjunctivitis, unspecified</field></record>
+        <record id="icd10_i10" model="hms.icd10"><field name="code">I10</field><field name="name">Essential (primary) hypertension</field></record>
+        <record id="icd10_j02_9" model="hms.icd10"><field name="code">J02.9</field><field name="name">Acute pharyngitis, unspecified</field></record>
+        <record id="icd10_j06_9" model="hms.icd10"><field name="code">J06.9</field><field name="name">Acute upper respiratory infection, unspecified</field></record>
+        <record id="icd10_j18_9" model="hms.icd10"><field name="code">J18.9</field><field name="name">Pneumonia, unspecified</field></record>
+        <record id="icd10_j20_9" model="hms.icd10"><field name="code">J20.9</field><field name="name">Acute bronchitis, unspecified</field></record>
+        <record id="icd10_j45_9" model="hms.icd10"><field name="code">J45.9</field><field name="name">Asthma, unspecified</field></record>
+        <record id="icd10_k29_7" model="hms.icd10"><field name="code">K29.7</field><field name="name">Gastritis, unspecified</field></record>
+        <record id="icd10_l03_9" model="hms.icd10"><field name="code">L03.9</field><field name="name">Cellulitis, unspecified</field></record>
+        <record id="icd10_m54_5" model="hms.icd10"><field name="code">M54.5</field><field name="name">Low back pain</field></record>
+        <record id="icd10_n39_0" model="hms.icd10"><field name="code">N39.0</field><field name="name">Urinary tract infection, site not specified</field></record>
+        <record id="icd10_r10_4" model="hms.icd10"><field name="code">R10.4</field><field name="name">Other and unspecified abdominal pain</field></record>
+        <record id="icd10_r50_9" model="hms.icd10"><field name="code">R50.9</field><field name="name">Fever, unspecified</field></record>
+        <record id="icd10_r51" model="hms.icd10"><field name="code">R51</field><field name="name">Headache</field></record>
+        <record id="icd10_u07_1" model="hms.icd10"><field name="code">U07.1</field><field name="name">COVID-19, virus identified</field></record>
+    </data>
+</odoo>
