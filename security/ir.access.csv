@@ -10,7 +10,8 @@ access_encounter_doctor_own,Encounter: doctor own,hms.encounter,group_hms_doctor
 access_encounter_admin,Encounter: admin,hms.encounter,group_hms_admin,crud,
 access_icd10_nurse,ICD-10: nurse read,hms.icd10,group_hms_nurse,r,
 access_icd10_admin,ICD-10: admin,hms.icd10,group_hms_admin,crud,
-access_observation_nurse,Vitals: nurse,hms.observation,group_hms_nurse,crud,
+access_observation_nurse,Vitals: nurse,hms.observation,group_hms_nurse,cru,
+access_observation_admin,Vitals: admin,hms.observation,group_hms_admin,crud,
 access_condition_nurse,Diagnosis: nurse read,hms.condition,group_hms_nurse,r,
 access_condition_doctor_own,Diagnosis: doctor own,hms.condition,group_hms_doctor,crud,"[('encounter_id.practitioner_id.user_id', '=', user.id)]"
 access_condition_admin,Diagnosis: admin,hms.condition,group_hms_admin,crud,
@@ -29,3 +30,18 @@ access_access_log_admin,Access log: admin read,hms.access.log,group_hms_admin,r,
 access_amend_wizard_admin,Amend wizard: admin,hms.encounter.amend.wizard,group_hms_admin,crud,
 access_encounter_cashier,Encounter: cashier read (billing),hms.encounter,group_hms_cashier,r,
 access_invoice_wizard_cashier,Invoice wizard: cashier,hms.invoice.wizard,group_hms_cashier,crud,
+access_patient_lab,Patient: lab read,hms.patient,group_hms_lab,r,
+access_patient_cashier,Patient: cashier read,hms.patient,group_hms_cashier,r,
+access_practitioner_lab,Practitioner: lab read,hms.practitioner,group_hms_lab,r,
+access_practitioner_cashier,Practitioner: cashier read,hms.practitioner,group_hms_cashier,r,
+access_lab_test_lab,Lab test: lab read,hms.lab.test,group_hms_lab,r,
+access_lab_correction_wizard,Lab correction wizard: lab,hms.lab.correction.wizard,group_hms_lab,crud,
+company_rule_patient,Patient: own companies only,hms.patient,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_practitioner,Practitioner: own companies only,hms.practitioner,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"
+company_rule_appointment,Appointment: own companies only,hms.appointment,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_encounter,Encounter: own companies only,hms.encounter,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_observation,Vitals: own companies only,hms.observation,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_condition,Diagnosis: own companies only,hms.condition,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_medreq,Prescription: own companies only,hms.medication.request,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_lab_request,Lab request: own companies only,hms.lab.request,,crud,"[('company_id', 'in', company_ids)]"
+company_rule_access_log,Access log: own companies only,hms.access.log,,crud,"['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]"

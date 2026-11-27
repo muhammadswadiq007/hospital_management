@@ -22,8 +22,12 @@ QUALITATIVE = {
     'negative': ('Negative', '260385009', 'NEG'),
 }
 # Only the lab may write these
-RESULT_FIELDS = {'result_value', 'result_qualitative', 'result_text'}
-LAB_MANAGED = RESULT_FIELDS | {'status', 'resulted_on', 'resulted_by_id'}
+RESULT_FIELDS = {'result_value', 'result_qualitative', 'result_text', 'result_entered'}
+LAB_MANAGED = RESULT_FIELDS | {'status', 'resulted_on', 'resulted_by_id', 'correction_count'}
+# Only the ordering doctor (or an admin) may change these, and only while the test is still ordered
+ORDER_FIELDS = {'test_id', 'priority', 'clinical_info', 'encounter_id'}
+# Written by the system itself (billing link)
+SYSTEM_FIELDS = {'invoice_line_id'}
 
 
 class HmsLabTest(models.Model):
@@ -65,6 +69,7 @@ class HmsLabRequest(models.Model):
     name = fields.Char(readonly=True, copy=False, default='New')
     encounter_id = fields.Many2one('hms.encounter', required=True, ondelete='cascade', index=True)
     patient_id = fields.Many2one(related='encounter_id.patient_id', store=True, index=True)
+    company_id = fields.Many2one(related='encounter_id.company_id', store=True, index=True)
     practitioner_id = fields.Many2one(related='encounter_id.practitioner_id', store=True, string='Requested By')
     test_id = fields.Many2one('hms.lab.test', string='Test', required=True, tracking=True)
     result_type = fields.Selection(related='test_id.result_type')
@@ -87,8 +92,11 @@ class HmsLabRequest(models.Model):
     interpretation = fields.Selection(INTERPRETATIONS, compute='_compute_interpretation', store=True)
     result_display = fields.Char(string='Result', compute='_compute_result_display')
     reference_range = fields.Char(compute='_compute_result_display')
+    result_entered = fields.Boolean(readonly=True, copy=False,
+                                    help='Set when a numeric result has actually been typed in (0 is not "empty")')
     resulted_on = fields.Datetime(readonly=True)
     resulted_by_id = fields.Many2one('res.users', string='Resulted By', readonly=True)
+    correction_count = fields.Integer(string='Corrections', readonly=True, copy=False)
 
     @api.depends('status', 'result_type', 'result_value', 'result_qualitative', 'test_id.ref_low', 'test_id.ref_high')
     def _compute_interpretation(self):
@@ -137,13 +145,33 @@ class HmsLabRequest(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('hms.lab.request') or 'New'
         return super().create(vals_list)
 
+    def _is_orderer(self):
+        """Doctors (record-level access already limits them to their own patients) and admins."""
+        return self.env.su or self.env.user.has_group('hospital_management.group_hms_doctor')
+
     def write(self, vals):
-        if RESULT_FIELDS & set(vals) and not self._is_lab():
+        keys = set(vals)
+        ctx = self.env.context
+        # Status only changes through the buttons (release / cancel / correct), never by direct edit
+        if 'status' in keys and not ctx.get('hms_lab_action') and not self.env.su:
+            raise AccessError(self.env._(
+                'The status of a lab test changes only through Release Result or Cancel Test.'))
+        if (LAB_MANAGED - {'status'}) & keys and not self._is_lab():
             raise AccessError(self.env._('Only laboratory staff can enter results.'))
-        if RESULT_FIELDS & set(vals) and any(r.status != 'active' for r in self):
-            raise UserError(self.env._('Results can only be entered on tests that are still ordered.'))
+        if RESULT_FIELDS & keys and not ctx.get('hms_lab_correction') \
+                and any(r.status != 'active' for r in self):
+            raise UserError(self.env._(
+                'This result has been released. Use "Correct Result" to amend it with a reason.'))
+        if ORDER_FIELDS & keys:
+            if not self._is_orderer():
+                raise AccessError(self.env._(
+                    'Only the ordering doctor can change which test was ordered or its priority.'))
+            if any(r.status != 'active' for r in self):
+                raise UserError(self.env._('The order can only be changed while the test is still awaiting a result.'))
+        if 'result_value' in keys:
+            vals = dict(vals, result_entered=True)
         # Lab results arrive after the visit, so only the *order* details lock with the encounter
-        if set(vals) - LAB_MANAGED:
+        if keys - LAB_MANAGED - SYSTEM_FIELDS:
             _check_encounter_open(self.env, self.encounter_id)
         return super().write(vals)
 
@@ -159,7 +187,10 @@ class HmsLabRequest(models.Model):
                 raise UserError(self.env._('%s is not awaiting a result.', rec.name))
             if rec.result_type == 'qualitative' and not rec.result_qualitative:
                 raise UserError(self.env._('Select Positive or Negative for %s.', rec.test_id.name))
-        self.write({'status': 'completed', 'resulted_on': fields.Datetime.now(), 'resulted_by_id': self.env.uid})
+            if rec.result_type == 'numeric' and not rec.result_entered:
+                raise UserError(self.env._('Enter the result value for %s before releasing it.', rec.test_id.name))
+        self.with_context(hms_lab_action=True).write(
+            {'status': 'completed', 'resulted_on': fields.Datetime.now(), 'resulted_by_id': self.env.uid})
         for rec in self:
             flag = dict(INTERPRETATIONS).get(rec.interpretation, '')
             # Tell the doctor on the visit's chatter
@@ -171,10 +202,23 @@ class HmsLabRequest(models.Model):
             )
 
     def action_cancel(self):
+        if not (self._is_lab() or self._is_orderer()):
+            raise AccessError(self.env._('Only the lab or the ordering doctor can cancel a test.'))
+        self.check_access('write')  # a doctor can only cancel their own patients' tests
         for rec in self:
             if rec.status != 'active':
                 raise UserError(self.env._('Only tests that are still ordered can be cancelled.'))
-        self.write({'status': 'revoked'})
+        self.with_context(hms_lab_action=True).write({'status': 'revoked'})
+        for rec in self:
+            rec.message_post(body=self.env._('Test cancelled by %s.', self.env.user.name))
+
+    def action_open_correction_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': self.env._('Correct Released Result'),
+            'res_model': 'hms.lab.correction.wizard', 'view_mode': 'form', 'target': 'new',
+            'context': {'default_lab_request_id': self.id},
+        }
 
     # ---------------- FHIR ----------------
 
@@ -212,7 +256,7 @@ class HmsLabRequest(models.Model):
         obs = {
             'resourceType': 'Observation',
             'id': 'result',
-            'status': 'final',
+            'status': 'corrected' if self.correction_count else 'final',
             'category': [{'coding': [{'system': 'http://terminology.hl7.org/CodeSystem/observation-category',
                                       'code': 'laboratory', 'display': 'Laboratory'}]}],
             'code': self._fhir_code(),
@@ -241,7 +285,7 @@ class HmsLabRequest(models.Model):
             'identifier': [{'value': self.name}],
             'contained': [clean(obs)],
             'basedOn': [{'reference': f'ServiceRequest/{self.id}'}],
-            'status': 'final',
+            'status': 'corrected' if self.correction_count else 'final',
             'category': [{'coding': [{'system': 'http://terminology.hl7.org/CodeSystem/v2-0074', 'code': 'LAB',
                                       'display': 'Laboratory'}]}],
             'code': self._fhir_code(),
@@ -252,3 +296,47 @@ class HmsLabRequest(models.Model):
             'resultsInterpreter': [{'display': self.resulted_by_id.name}] if self.resulted_by_id else None,
             'result': [{'reference': '#result'}],
         })
+
+
+class HmsLabCorrectionWizard(models.TransientModel):
+    """Correct a released result. The old value stays in the history; the reason is kept permanently."""
+    _name = 'hms.lab.correction.wizard'
+    _description = 'Correct Lab Result'
+
+    lab_request_id = fields.Many2one('hms.lab.request', required=True, readonly=True)
+    result_type = fields.Selection(related='lab_request_id.result_type')
+    unit = fields.Char(related='lab_request_id.unit')
+    old_result = fields.Char(related='lab_request_id.result_display', string='Released Result')
+    result_value = fields.Float(string='Correct Value', digits=(10, 2))
+    result_qualitative = fields.Selection([(k, v[0]) for k, v in QUALITATIVE.items()], string='Correct Result')
+    result_text = fields.Char(string='Comment')
+    reason = fields.Text(required=True)
+
+    def action_confirm(self):
+        self.ensure_one()
+        req = self.lab_request_id
+        if not req._is_lab():
+            raise AccessError(self.env._('Only laboratory staff can correct a result.'))
+        if req.status != 'completed':
+            raise UserError(self.env._('Only released results can be corrected.'))
+        reason = (self.reason or '').strip()
+        if len(reason) < 10:
+            raise UserError(self.env._('Please give a proper reason (at least 10 characters).'))
+        if req.result_type == 'qualitative' and not self.result_qualitative:
+            raise UserError(self.env._('Select Positive or Negative.'))
+        old = req.result_display
+        vals = {'result_text': self.result_text or req.result_text,
+                'correction_count': req.correction_count + 1,
+                'resulted_on': fields.Datetime.now(), 'resulted_by_id': self.env.uid}
+        if req.result_type == 'qualitative':
+            vals['result_qualitative'] = self.result_qualitative
+        else:
+            vals['result_value'] = self.result_value
+        req.with_context(hms_lab_correction=True, hms_lab_action=True).write(vals)
+        msg = self.env._('Result CORRECTED by %(user)s: %(old)s → %(new)s. Reason: %(reason)s',
+                         user=self.env.user.name, old=old, new=req.result_display, reason=reason)
+        req.message_post(body=msg)
+        req.encounter_id.sudo().message_post(body=msg, partner_ids=req.practitioner_id.user_id.partner_id.ids)
+        self.env['hms.access.log']._log(req, 'lab_correction', patient_field='patient_id',
+                                        detail=f'{old} → {req.result_display}. {reason}'[:250])
+        return {'type': 'ir.actions.act_window_close'}

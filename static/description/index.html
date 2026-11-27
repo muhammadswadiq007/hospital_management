@@ -1,0 +1,42 @@
+<section class="container">
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <h2 style="color:#714B67;">Hospital Management (FHIR)</h2>
+            <h4 class="text-muted">Outpatient clinic and small-hospital management for Odoo 20,
+                with an HL7 FHIR R4 API</h4>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h4>Clinical workflow</h4>
+            <ul>
+                <li>Patient registration with automatic medical record numbers</li>
+                <li>Appointments with double-booking protection and check-in</li>
+                <li>Visits that lock when finished; admin-only amendments with a reason</li>
+                <li>Vital signs (LOINC), diagnoses (ICD-10), prescriptions (WHO ATC, SNOMED CT routes)</li>
+                <li>Laboratory orders, worklist, results with normal ranges, corrections with a reason</li>
+                <li>Printable prescriptions</li>
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h4>Billing, privacy and interoperability</h4>
+            <ul>
+                <li>Cash and insurance invoices through Odoo Invoicing, including supplementary invoices</li>
+                <li>Roles: receptionist, nurse, doctor, lab technician, cashier, administrator</li>
+                <li>Tamper-proof access log of every view, list, export, script and API read</li>
+                <li>Multi-company (branches) separation</li>
+                <li>FHIR R4 API with API-key authentication, paging, AuditEvent and Patient/$everything</li>
+            </ul>
+        </div>
+    </div>
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h4>After installing</h4>
+            <ol>
+                <li>Invoicing &gt; Configuration &gt; Settings: choose your Fiscal Localization and save.</li>
+                <li>Settings &gt; Users: give each staff member a Hospital role.</li>
+                <li>Hospital &gt; Configuration: link practitioners to users; set prices and lab normal ranges.</li>
+            </ol>
+        </div>
+    </div>
+</section>

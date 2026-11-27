@@ -15,7 +15,7 @@
                 <field name="billing_state" widget="badge"
                        decoration-warning="billing_state == 'to_invoice'"
                        decoration-success="billing_state == 'invoiced'"/>
-                <field name="invoice_id"/>
+                <field name="invoice_count" string="Invoices"/>
                 <field name="payment_state" widget="badge"/>
             </list>
         </field>
@@ -34,9 +34,9 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_invoice" type="object" class="oe_stat_button" icon="fa-file-text-o"
-                                invisible="not invoice_id">
-                            <field name="invoice_id" string="Invoice" widget="statinfo"/>
+                        <button name="action_view_invoices" type="object" class="oe_stat_button" icon="fa-file-text-o"
+                                invisible="not invoice_count">
+                            <field name="invoice_count" string="Invoices" widget="statinfo"/>
                         </button>
                     </div>
                     <div class="oe_title"><h1><field name="name"/></h1></div>
@@ -49,7 +49,7 @@
                         <group>
                             <field name="period_start"/>
                             <field name="period_end"/>
-                            <field name="payment_state" invisible="not invoice_id" widget="badge"/>
+                            <field name="payment_state" invisible="not invoice_count" widget="badge"/>
                         </group>
                     </group>
                 </sheet>
@@ -68,7 +68,7 @@
                 <filter name="to_invoice" string="To Invoice" domain="[('billing_state', 'in', ['to_invoice'])]"/>
                 <filter name="invoiced" string="Invoiced" domain="[('billing_state', 'in', ['invoiced'])]"/>
                 <filter name="unpaid" string="Invoiced, Not Paid"
-                        domain="[('billing_state', 'in', ['invoiced']), ('invoice_id.payment_state', 'not in', ('paid', 'in_payment', 'reversed'))]"/>
+                        domain="[('invoice_ids', 'any', [('state', '=', 'posted'), ('payment_state', 'in', ('not_paid', 'partial'))])]"/>
             </search>
         </field>
     </record>
@@ -111,6 +111,7 @@
                                required="payer_type == 'insurance'"/>
                     </group>
                 </group>
+                <field name="is_supplementary" invisible="1"/>
                 <field name="preview" nolabel="1"/>
                 <footer>
                     <button name="action_create_invoice" string="Create Invoice" type="object" class="btn-primary"/>
@@ -138,5 +139,13 @@
                 <field name="is_hms_insurer" invisible="not is_company"/>
             </field>
         </field>
+    </record>
+
+    <record id="action_hms_load_example_prices" model="ir.actions.server">
+        <field name="name">Load Example Prices (KES)</field>
+        <field name="model_id" ref="model_hms_medication"/>
+        <field name="state">code</field>
+        <field name="code">action = env['hms.example.prices'].action_load_example_prices()</field>
+        <field name="group_ids" eval="[(4, ref('group_hms_admin'))]"/>
     </record>
 </odoo>

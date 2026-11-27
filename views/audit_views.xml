@@ -5,14 +5,18 @@
         <field name="name">hms.access.log.list</field>
         <field name="model">hms.access.log</field>
         <field name="arch" type="xml">
-            <list create="false" edit="false" delete="false" decoration-warning="action == 'amend'"
-                  decoration-info="action == 'export'">
+            <list create="false" edit="false" delete="false"
+                  decoration-warning="action in ('amend', 'reassign', 'lab_correction', 'cancel')"
+                  decoration-danger="action == 'delete'"
+                  decoration-info="action in ('export', 'api_export')">
                 <field name="timestamp"/>
-                <field name="user_id"/>
+                <field name="user_login" string="User"/>
                 <field name="action"/>
                 <field name="channel"/>
-                <field name="patient_id"/>
+                <field name="patient_name" string="Patient"/>
+                <field name="patient_mrn"/>
                 <field name="record_name"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
                 <field name="ip_address" optional="show"/>
                 <field name="detail" optional="show"/>
             </list>
@@ -24,16 +28,20 @@
         <field name="model">hms.access.log</field>
         <field name="arch" type="xml">
             <search>
-                <field name="patient_id"/>
-                <field name="user_id"/>
+                <field name="patient_name"/>
+                <field name="patient_mrn"/>
+                <field name="user_login"/>
                 <field name="ip_address"/>
                 <filter name="today" string="Today" domain="[('timestamp', '&gt;=', 'today')]"/>
                 <filter name="api" string="Via FHIR API" domain="[('channel', '=', 'api')]"/>
                 <filter name="amendments" string="Amendments" domain="[('action', '=', 'amend')]"/>
-                <filter name="exports" string="Full Exports" domain="[('action', '=', 'export')]"/>
+                <filter name="exports" string="Exports" domain="[('action', 'in', ('export', 'api_export'))]"/>
+                <filter name="changes" string="Amendments, Cancellations, Corrections"
+                        domain="[('action', 'in', ('amend', 'cancel', 'reassign', 'lab_correction', 'delete'))]"/>
+                <filter name="scripts" string="External Scripts" domain="[('channel', '=', 'rpc')]"/>
                 <group>
-                    <filter name="group_patient" string="Patient" context="{'group_by': 'patient_id'}"/>
-                    <filter name="group_user" string="User" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_patient" string="Patient" context="{'group_by': 'patient_mrn'}"/>
+                    <filter name="group_user" string="User" context="{'group_by': 'user_login'}"/>
                     <filter name="group_day" string="Day" context="{'group_by': 'timestamp:day'}"/>
                 </group>
             </search>

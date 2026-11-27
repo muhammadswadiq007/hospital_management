@@ -1,10 +1,14 @@
 import json
+from urllib.parse import urlencode
 
 from odoo import http
 from odoo.exceptions import AccessError
 from odoo.http import request
 
 from ..models.observation import VITALS
+
+DEFAULT_COUNT = 50   # results per page when the client doesn't ask
+MAX_COUNT = 500
 
 FHIR_JSON = [('Content-Type', 'application/fhir+json; charset=utf-8')]
 
@@ -93,7 +97,7 @@ RESOURCES = {
         'model': 'hms.access.log',
         'search': {
             'patient': ('reference', lambda v: [('patient_id', '=', _ref_id(v))]),
-            'agent': ('string', lambda v: [('user_id.login', '=', v)]),
+            'agent': ('string', lambda v: [('user_login', '=', v)]),
         },
     },
 }
@@ -177,8 +181,8 @@ class FhirController(http.Controller):
                 'resource': [{
                     'type': rtype,
                     'interaction': [{'code': 'read'}, {'code': 'search-type'}],
-                    'searchParam': [{'name': name, 'type': ptype}
-                                    for name, (ptype, _fn) in conf['search'].items()],
+                    'searchParam': [{'name': '_id', 'type': 'token'}] + [
+                        {'name': name, 'type': ptype} for name, (ptype, _fn) in conf['search'].items()],
                 } for rtype, conf in RESOURCES.items()],
             }],
         })
@@ -203,7 +207,7 @@ class FhirController(http.Controller):
                         practitioners |= rec.practitioner_id
             for prac in practitioners:
                 entries.append({'fullUrl': f'{base}fhir/R4/Practitioner/{prac.id}', 'resource': prac.to_fhir()})
-            request.env['hms.access.log']._log(patient, 'export', 'api', detail=f'$everything ({len(entries)} resources)')
+            request.env['hms.access.log']._log(patient, 'api_export', 'api', detail=f'$everything ({len(entries)} resources)')
             return _fhir_response({'resourceType': 'Bundle', 'type': 'searchset', 'total': len(entries), 'entry': entries})
         except AccessError:
             return _operation_outcome('forbidden', f'You are not allowed to export Patient/{rid}', 403)
@@ -228,24 +232,68 @@ class FhirController(http.Controller):
         if rtype not in RESOURCES:
             return _operation_outcome('not-supported', f'Resource type {rtype} is not supported', 404)
         conf = RESOURCES[rtype]
-        unknown = set(params) - set(conf['search'])
-        if unknown:
-            return _operation_outcome('not-supported', f'Unsupported search parameter(s): {", ".join(sorted(unknown))}', 400)
-        domain = list(conf.get('domain', []))
-        for name, value in params.items():
-            domain += conf['search'][name][1](value)
+        strict = 'handling=strict' in (request.httprequest.headers.get('Prefer') or '').replace(' ', '')
+
+        # Result parameters (FHIR: _count, _id; plus _offset for the paging links we generate)
         try:
-            records = request.env[conf['model']].search(domain, limit=100)
-            _audit(records, 'api_search', f'GET {rtype}?{request.httprequest.query_string.decode()[:200]}')
+            count = int(params.pop('_count', DEFAULT_COUNT))
+            offset = int(params.pop('_offset', 0))
+        except ValueError:
+            return _operation_outcome('invalid', '_count and _offset must be whole numbers', 400)
+        count = max(0, min(count, MAX_COUNT))
+        offset = max(0, offset)
+        id_param = params.pop('_id', None)
+
+        domain = list(conf.get('domain', []))
+        if id_param:
+            ids = [int(i) for i in id_param.split(',') if i.strip().isdigit()]
+            domain.append(('id', 'in', ids))
+        ignored = []
+        for name, value in params.items():
+            if name in conf['search']:
+                domain += conf['search'][name][1](value)
+            else:
+                ignored.append(name)
+        if ignored and strict:
+            return _operation_outcome('not-supported', f'Unsupported search parameter(s): {", ".join(sorted(ignored))}', 400)
+
+        try:
+            Model = request.env[conf['model']]
+            total = Model.search_count(domain)
+            records = Model.search(domain, limit=count, offset=offset, order='id') if count else Model.browse()
+            if records:
+                _audit(records, 'api_search', f'GET {rtype}?{request.httprequest.query_string.decode()[:200]}')
+            base = f'{request.httprequest.host_url}fhir/R4/{rtype}'
+
+            def page_url(page_offset):
+                query = {k: v for k, v in params.items() if k not in ignored}
+                if id_param:
+                    query['_id'] = id_param
+                query.update({'_count': count, '_offset': page_offset})
+                return f'{base}?{urlencode(query)}'
+
+            links = [{'relation': 'self', 'url': page_url(offset)}]
+            if count and offset + count < total:
+                links.append({'relation': 'next', 'url': page_url(offset + count)})
+            if offset > 0:
+                links.append({'relation': 'previous', 'url': page_url(max(0, offset - count))})
+            entries = [{
+                'fullUrl': f'{base}/{r.id}',
+                'resource': getattr(r, conf.get('method', 'to_fhir'))(),
+                'search': {'mode': 'match'},
+            } for r in records]
+            if ignored:
+                entries.append({'resource': {
+                    'resourceType': 'OperationOutcome',
+                    'issue': [{'severity': 'warning', 'code': 'not-supported',
+                               'diagnostics': f'Ignored unsupported search parameter(s): {", ".join(sorted(ignored))}'}],
+                }, 'search': {'mode': 'outcome'}})
             return _fhir_response({
                 'resourceType': 'Bundle',
                 'type': 'searchset',
-                'total': len(records),
-                'entry': [{
-                    'fullUrl': f'{request.httprequest.host_url}fhir/R4/{rtype}/{r.id}',
-                    'resource': getattr(r, conf.get('method', 'to_fhir'))(),
-                    'search': {'mode': 'match'},
-                } for r in records],
+                'total': total,
+                'link': links,
+                'entry': entries,
             })
         except AccessError:
             return _operation_outcome('forbidden', f'You are not allowed to search {rtype}', 403)

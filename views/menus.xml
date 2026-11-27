@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_hms_root" name="Hospital" sequence="10"
-              groups="group_hms_receptionist"/>
+              groups="group_hms_receptionist,group_hms_lab,group_hms_cashier"/>
 
     <menuitem id="menu_hms_patients" name="Patients" parent="menu_hms_root"
-              action="action_hms_patient" sequence="10"/>
+              action="action_hms_patient" sequence="10"
+              groups="group_hms_receptionist,group_hms_cashier"/>
     <menuitem id="menu_hms_appointments" name="Appointments" parent="menu_hms_root"
-              action="action_hms_appointment" sequence="20"/>
+              action="action_hms_appointment" sequence="20" groups="group_hms_receptionist"/>
     <menuitem id="menu_hms_encounters" name="Encounters" parent="menu_hms_root"
               action="action_hms_encounter" sequence="30" groups="group_hms_nurse"/>
 
@@ -33,6 +34,8 @@
               action="action_hms_lab_test" sequence="40"/>
     <menuitem id="menu_hms_insurers" name="Insurers" parent="menu_hms_config"
               action="action_hms_insurers" sequence="50"/>
+    <menuitem id="menu_hms_load_prices" name="Load Example Prices (KES)" parent="menu_hms_config"
+              action="action_hms_load_example_prices" sequence="80"/>
     <menuitem id="menu_hms_access_log" name="Access Log" parent="menu_hms_config"
               action="action_hms_access_log" sequence="90"/>
 </odoo>

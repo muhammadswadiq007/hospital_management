@@ -49,9 +49,10 @@
                             <field name="appointment_id" invisible="not appointment_id"/>
                             <field name="period_start"/>
                             <field name="period_end"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="billing_state" invisible="1" groups="hospital_management.group_hms_cashier"/>
-                            <field name="invoice_id" invisible="not invoice_id" groups="account.group_account_invoice"/>
-                            <field name="payment_state" invisible="not invoice_id" widget="badge" groups="account.group_account_invoice"/>
+                            <field name="invoice_count" invisible="1" groups="account.group_account_invoice"/>
+                            <field name="payment_state" invisible="not invoice_count" widget="badge" groups="account.group_account_invoice"/>
                             <field name="amendment_count" string="Amendments" invisible="not amendment_count"/>
                         </group>
                     </group>

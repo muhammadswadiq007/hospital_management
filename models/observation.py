@@ -34,6 +34,7 @@ class HmsObservation(models.Model):
 
     encounter_id = fields.Many2one('hms.encounter', required=True, ondelete='cascade', index=True)
     patient_id = fields.Many2one(related='encounter_id.patient_id', store=True, index=True)
+    company_id = fields.Many2one(related='encounter_id.company_id', store=True, index=True)
     code = fields.Selection([(k, v['label']) for k, v in VITALS.items()], string='Vital Sign', required=True)
     value = fields.Float(digits=(6, 1), required=True, help='For blood pressure: the systolic value')
     value_diastolic = fields.Float(string='Diastolic', digits=(6, 0))

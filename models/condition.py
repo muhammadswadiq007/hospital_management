@@ -31,6 +31,7 @@ class HmsCondition(models.Model):
 
     encounter_id = fields.Many2one('hms.encounter', required=True, ondelete='cascade', index=True)
     patient_id = fields.Many2one(related='encounter_id.patient_id', store=True, index=True)
+    company_id = fields.Many2one(related='encounter_id.company_id', store=True, index=True)
     icd10_id = fields.Many2one('hms.icd10', string='Diagnosis (ICD-10)', required=True)
     # Values are FHIR's own codes
     verification_status = fields.Selection([

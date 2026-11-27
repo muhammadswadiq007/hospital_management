@@ -68,6 +68,7 @@ class HmsMedicationRequest(models.Model):
 
     encounter_id = fields.Many2one('hms.encounter', required=True, ondelete='cascade', index=True)
     patient_id = fields.Many2one(related='encounter_id.patient_id', store=True, index=True)
+    company_id = fields.Many2one(related='encounter_id.company_id', store=True, index=True)
     medication_id = fields.Many2one('hms.medication', required=True)
     dose = fields.Float(required=True, default=1, digits=(6, 1))
     dose_unit = fields.Selection(DOSE_UNITS, required=True, default='tablet', string='Unit')
@@ -108,8 +109,7 @@ class HmsMedicationRequest(models.Model):
                 rec.quantity = rec.dose
             elif per_day:
                 rec.quantity = rec.dose * per_day * max(rec.duration_days, 0)
-            else:
-                rec.quantity = 0
+            # PRN ("when required"): no schedule to calculate from, so the prescriber enters the quantity
 
     @api.depends('dose', 'dose_unit', 'route', 'frequency', 'duration_days', 'instructions')
     def _compute_sig(self):
@@ -131,7 +131,7 @@ class HmsMedicationRequest(models.Model):
         for rec in self:
             rec.display_name = f'{rec.medication_id.display_name} — {rec.sig or ""}'
 
-    @api.constrains('dose', 'duration_days', 'frequency')
+    @api.constrains('dose', 'duration_days', 'frequency', 'quantity', 'dose_unit')
     def _check_values(self):
         for rec in self:
             if rec.dose <= 0:
@@ -139,6 +139,10 @@ class HmsMedicationRequest(models.Model):
             if rec.frequency not in ('stat', 'prn') and rec.duration_days <= 0:
                 raise ValidationError(self.env._('Enter how many days the patient should take %s.',
                                                  rec.medication_id.display_name))
+            if rec.frequency == 'prn' and rec.dose_unit in COUNTABLE and rec.quantity <= 0:
+                raise ValidationError(self.env._(
+                    '%s is "when required", so enter the quantity to dispense (e.g. 10 tablets).',
+                    rec.medication_id.display_name))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -147,7 +151,8 @@ class HmsMedicationRequest(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
-        _check_encounter_open(self.env, self.encounter_id)
+        if set(vals) - {'invoice_line_id'}:  # billing may link a line after the visit closed
+            _check_encounter_open(self.env, self.encounter_id)
         return super().write(vals)
 
     def unlink(self):

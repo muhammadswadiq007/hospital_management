@@ -45,10 +45,11 @@
                             <field name="email"/>
                             <field name="address"/>
                             <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Appointments" name="appointments">
+                        <page string="Appointments" name="appointments" groups="hospital_management.group_hms_receptionist">
                             <field name="appointment_ids" readonly="1">
                                 <list>
                                     <field name="name"/>

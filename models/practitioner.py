@@ -25,6 +25,8 @@ class HmsPractitioner(models.Model):
     phone = fields.Char()
     email = fields.Char()
     active = fields.Boolean(default=True)
+    company_id = fields.Many2one('res.company', index=True, default=lambda self: self.env.company,
+                                 help='Leave empty for a practitioner who works at all branches.')
 
     _user_unique = models.Constraint('UNIQUE(user_id)', 'This user is already linked to another practitioner.')
 
