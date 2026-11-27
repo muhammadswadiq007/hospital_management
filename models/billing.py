@@ -346,6 +346,9 @@ class HmsInvoiceWizard(models.TransientModel):
     insurer_id = fields.Many2one('res.partner', domain=[('is_hms_insurer', '=', True)])
     member_number = fields.Char(string='Member / Policy No.')
     is_supplementary = fields.Boolean(compute='_compute_preview')
+    unpriced_items = fields.Text(compute='_compute_preview')
+    confirm_unpriced = fields.Boolean(string='Invoice items without a price at 0.00',
+                                      help='Tick only if these items are really free (e.g. a free HIV test).')
     preview = fields.Html(compute='_compute_preview', sanitize=False)
     total = fields.Float(compute='_compute_preview')
 
@@ -379,7 +382,7 @@ class HmsInvoiceWizard(models.TransientModel):
     def _compute_preview(self):
         for wiz in self:
             if not wiz.encounter_id:
-                wiz.preview, wiz.total, wiz.is_supplementary = False, 0, False
+                wiz.preview, wiz.total, wiz.is_supplementary, wiz.unpriced_items = False, 0, False, False
                 continue
             lines = wiz.encounter_id._billing_lines()
             wiz.is_supplementary = bool(wiz.encounter_id.sudo().invoice_ids.filtered(lambda m: m.state != 'cancel'))
@@ -389,7 +392,10 @@ class HmsInvoiceWizard(models.TransientModel):
                 f'<td class="text-end">{l["quantity"] * l["price_unit"]:,.2f}</td></tr>' for l in lines)
             wiz.total = sum(l['quantity'] * l['price_unit'] for l in lines)
             unpriced = [l['name'] for l in lines if not l['price_unit']]
-            warning = (f'<p class="text-warning">No price set for: {escape(", ".join(unpriced))}</p>'
+            wiz.unpriced_items = '\n'.join(unpriced) or False
+            warning = (f'<div class="alert alert-warning mb-0"><strong>No price set</strong> for: '
+                       f'{escape(", ".join(unpriced))}. Set the price in Hospital &gt; Configuration '
+                       f'(or on the consultation product), or tick the box below if it really is free.</div>'
                        if unpriced else '')
             note = ('<p class="text-info">This visit was already invoiced; only items added since then '
                     '(e.g. after an amendment) are listed.</p>' if wiz.is_supplementary else '')
@@ -409,6 +415,11 @@ class HmsInvoiceWizard(models.TransientModel):
         lines = enc._billing_lines()
         if not lines:
             raise UserError(self.env._('Everything on %s has already been invoiced.', enc.name))
+        unpriced = [l['name'] for l in lines if not l['price_unit']]
+        if unpriced and not self.confirm_unpriced:
+            raise UserError(self.env._(
+                'These items have no price:\n%s\n\nSet their prices first, or tick "Invoice items without a '
+                'price at 0.00" if they really are free.', '\n'.join(f'- {n}' for n in unpriced)))
         if self.payer_type == 'insurance' and not (self.insurer_id and self.member_number):
             raise UserError(self.env._('Choose the insurer and enter the member number.'))
         if not self.env['account.journal'].sudo().search_count(

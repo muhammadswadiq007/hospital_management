@@ -23,6 +23,9 @@ ACTIONS = [
     ('delete', 'Patient Deleted'),
 ]
 DEDUPE_SECONDS = 60
+# Actions that usually touch many records at once: logged as ONE row listing the IDs
+GROUPED_ACTIONS = {'list', 'read', 'export', 'api_search'}
+RETENTION_PARAM = 'hospital_management.access_log_retention_days'
 
 _logger = logging.getLogger(__name__)
 
@@ -63,6 +66,12 @@ class HmsAccessLog(models.Model):
     res_model = fields.Char(string='Record Type', readonly=True)
     res_id = fields.Integer(string='Record ID', readonly=True)
     record_name = fields.Char(string='Record', readonly=True)
+    # A list page / search / export is one row: which records, and which patients they belong to
+    res_ids = fields.Text(string='Record IDs', readonly=True)
+    record_count = fields.Integer(string='Records', readonly=True, default=1)
+    patient_ids_text = fields.Text(string='Patient IDs', readonly=True,
+                                   help='Comma-wrapped list (",3,17,") so "who saw patient 17" finds list rows too')
+    patient_mrns = fields.Text(string='Patients (MRNs)', readonly=True)
     action = fields.Selection(ACTIONS, required=True, readonly=True)
     channel = fields.Selection([
         ('ui', 'Odoo Screen'), ('api', 'FHIR API'), ('rpc', 'External Script / RPC'), ('system', 'Server'),
@@ -78,50 +87,99 @@ class HmsAccessLog(models.Model):
 
     @api.model
     def _log(self, records, action, channel=None, patient_field=None, detail=None, dedupe_seconds=0):
-        """Create one log line per record. Safe to call from anywhere (uses sudo)."""
+        """Record an access. Safe to call from anywhere (uses sudo).
+
+        Opening one record = one row with that patient's name and MRN. A list page, search, multi-record
+        read or export = ONE row listing the record IDs and the patients involved (not one row each).
+        """
         if not records:
             return
-        log = self.sudo()
         channel = channel or _channel()
         ip = request.httprequest.remote_addr if request else None
-        recent = set()
-        if dedupe_seconds:
-            since = fields.Datetime.now() - timedelta(seconds=dedupe_seconds)
-            recent = set(log.search([
-                ('user_id', '=', self.env.uid), ('res_model', '=', records._name), ('res_id', 'in', records.ids),
-                ('action', '=', action), ('timestamp', '>=', since),
-            ]).mapped('res_id'))
         user = self.env.user
-        vals_list = []
-        for rec in records.sudo():
-            if rec.id in recent:
-                continue  # same person re-opening the same record seconds later (e.g. after saving)
+        recs = records.sudo()
+
+        def patient_of(rec):
             if rec._name == 'hms.patient':
-                patient = rec
-            elif patient_field:
-                patient = rec[patient_field]
-            else:
-                patient = rec['patient_id'] if 'patient_id' in rec._fields else rec.browse()
-            vals_list.append({
-                'user_id': user.id,
-                'user_login': user.login,
-                'company_id': (patient.company_id or self.env.company).id,
-                'patient_id': patient.id or False,
-                'patient_name': patient.name,
-                'patient_mrn': patient.mrn,
-                'res_model': rec._name,
-                'res_id': rec.id,
-                'record_name': rec.display_name,
-                'action': action,
-                'channel': channel,
-                'ip_address': ip,
-                'detail': detail,
-            })
+                return rec
+            if patient_field:
+                return rec[patient_field]
+            return rec['patient_id'] if 'patient_id' in rec._fields else self.env['hms.patient']
+
+        since = fields.Datetime.now() - timedelta(seconds=dedupe_seconds) if dedupe_seconds else None
+        base = {'user_id': user.id, 'user_login': user.login, 'res_model': recs._name, 'action': action,
+                'channel': channel, 'ip_address': ip, 'detail': detail}
+
+        if action in GROUPED_ACTIONS and len(recs) > 1:
+            patients = self.env['hms.patient'].sudo()
+            for rec in recs:
+                patients |= patient_of(rec)
+            ids_key = ','.join(str(i) for i in sorted(recs.ids))
+            companies = patients.company_id
+            self._insert([dict(base,
+                company_id=(companies if len(companies) == 1 else self.env.company).id,
+                patient_id=patients.id if len(patients) == 1 else False,
+                patient_name=patients.name if len(patients) == 1 else self.env._('%s patients', len(patients)),
+                patient_mrn=patients.mrn if len(patients) == 1 else False,
+                patient_ids_text=',' + ','.join(str(i) for i in sorted(patients.ids)) + ',' if patients else False,
+                patient_mrns=', '.join(sorted(m for m in patients.mapped('mrn') if m)) or False,
+                res_id=False, res_ids=ids_key, record_count=len(recs),
+                record_name=self.env._('%(n)s %(what)s', n=len(recs), what=recs._description),
+            )], since)
+            return
+
+        vals_list = []
+        for rec in recs:
+            patient = patient_of(rec)
+            vals_list.append(dict(base,
+                company_id=(patient.company_id or self.env.company).id,
+                patient_id=patient.id or False,
+                patient_name=patient.name,
+                patient_mrn=patient.mrn,
+                patient_ids_text=f',{patient.id},' if patient else False,
+                patient_mrns=patient.mrn or False,
+                res_id=rec.id, res_ids=str(rec.id), record_count=1,
+                record_name=rec.display_name,
+            ))
         if vals_list:
-            self._insert(vals_list)
+            self._insert(vals_list, since)
 
     @api.model
-    def _insert(self, vals_list):
+    def _drop_recent(self, vals_list, since):
+        """Skip rows the same user already produced within the window (a page reloaded, a form reopened
+        after saving). Runs in whichever transaction writes the rows, so it sees what was just logged."""
+        if not since:
+            return vals_list
+        kept = []
+        for v in vals_list:
+            domain = [('user_id', '=', v['user_id']), ('res_model', '=', v['res_model']),
+                      ('action', '=', v['action']), ('timestamp', '>=', since)]
+            domain.append(('res_ids', '=', v['res_ids']) if v.get('record_count', 1) > 1 else ('res_id', '=', v['res_id']))
+            if not self.search_count(domain, limit=1):
+                kept.append(v)
+        return kept
+
+    @api.model
+    def _search_patient_domain(self, patient_id):
+        """Rows that touched this patient, whether opened alone or as part of a list."""
+        return [('patient_ids_text', 'like', f'%,{int(patient_id)},%')]
+
+    @api.model
+    def _cron_purge_old_rows(self):
+        """Delete rows older than the retention period (System Parameter, in days; 0 = keep forever)."""
+        # Odoo 20 typed getter (get_param was removed); an invalid value falls back to 0 = keep forever
+        days = self.env['ir.config_parameter'].sudo().get_int(RETENTION_PARAM, 0)
+        if days <= 0:
+            return 0
+        # Direct SQL on purpose: the log can never be deleted through the application, only aged out here
+        self.env.cr.execute(
+            "DELETE FROM hms_access_log WHERE timestamp < (now() at time zone 'UTC') - %s * interval '1 day'",
+            [days])
+        _logger.info('Access log retention: deleted %s rows older than %s days', self.env.cr.rowcount, days)
+        return self.env.cr.rowcount
+
+    @api.model
+    def _insert(self, vals_list, since=None):
         """Write log rows in their own short transaction: this works even inside read-only requests,
         and the access stays recorded even if the user's own action later fails and rolls back.
         Uses the current transaction instead when the user was created in it and is not committed yet."""
@@ -134,11 +192,31 @@ class HmsAccessLog(models.Model):
                     cr.execute("SELECT count(*) FROM res_users WHERE id IN %s", [tuple(user_ids)])
                     visible = cr.fetchone()[0] == len(user_ids)
                 if visible:
-                    self.env(cr=cr, su=True)['hms.access.log'].create(vals_list)
+                    separate = self.env(cr=cr, su=True)['hms.access.log']
+                    vals_list = separate._drop_recent(vals_list, since)
+                    if vals_list:
+                        separate.create(vals_list)
                     return
         except Exception:  # noqa: BLE001
             _logger.warning('Access log: separate transaction failed, using the current one', exc_info=True)
-        self.sudo().create(vals_list)
+        vals_list = self.sudo()._drop_recent(vals_list, since)
+        if vals_list:
+            self.sudo().create(vals_list)
+
+    def _fhir_entities(self, fhir_type):
+        entity_type = {'system': 'http://terminology.hl7.org/CodeSystem/audit-entity-type', 'code': '2',
+                       'display': 'System Object'}
+        ids = [i for i in (self.res_ids or str(self.res_id or '')).split(',') if i]
+        if self.record_count <= 1:
+            return [clean({
+                'what': ({'reference': f'{fhir_type}/{self.res_id}', 'display': self.record_name}
+                         if fhir_type and self.action != 'delete' and self.res_id else {'display': self.record_name}),
+                'type': entity_type,
+                'name': f'{self.patient_name} ({self.patient_mrn})' if self.patient_mrn else None,
+            })]
+        if fhir_type:
+            return [{'what': {'reference': f'{fhir_type}/{i}'}, 'type': entity_type} for i in ids]
+        return [{'what': {'display': f'{self.res_model} {i}'}, 'type': entity_type} for i in ids]
 
     def to_fhir(self):
         """FHIR R4 AuditEvent."""
@@ -166,13 +244,7 @@ class HmsAccessLog(models.Model):
             'source': {'observer': {'display': 'Odoo Hospital Management'},
                        'type': [{'system': 'http://terminology.hl7.org/CodeSystem/security-source-type',
                                  'code': '4', 'display': 'Application Server'}]},
-            'entity': [clean({
-                'what': ({'reference': f'{fhir_type}/{self.res_id}', 'display': self.record_name}
-                         if fhir_type and self.action != 'delete' else {'display': self.record_name}),
-                'type': {'system': 'http://terminology.hl7.org/CodeSystem/audit-entity-type', 'code': '2',
-                         'display': 'System Object'},
-                'name': f'{self.patient_name} ({self.patient_mrn})' if self.patient_mrn else None,
-            })],
+            'entity': self._fhir_entities(fhir_type),
         })
 
 

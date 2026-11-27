@@ -1,6 +1,6 @@
 {
     'name': 'Hospital Management (FHIR)',
-    'version': '20.0.1.7.0',
+    'version': '20.0.1.8.0',
     'summary': 'Hospital management with HL7 FHIR R4-aligned data and API',
     'category': 'Services',
     'author': 'Muhammadswadiq',
@@ -16,6 +16,7 @@
         'data/medication_data.xml',
         'data/lab_test_data.xml',
         'data/billing_data.xml',
+        'data/audit_data.xml',
         'views/practitioner_views.xml',
         'views/appointment_views.xml',
         'views/icd10_views.xml',

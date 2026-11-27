@@ -13,7 +13,7 @@ A custom Odoo 20 module for running an outpatient clinic or small hospital: regi
 | **Diagnoses** | Picked from **ICD-10** (26 common codes included; more can be added) |
 | **Prescriptions** | Dose, route, frequency (OD/BD/TDS/QID/STAT/PRN), duration, auto-calculated quantity (PRN requires an explicit quantity). Drugs coded with **WHO ATC**, routes with **SNOMED CT**. Printable PDF prescription |
 | **Laboratory** | Doctor orders → lab worklist → result released → doctor notified. Only the lab sets a result (and a numeric value must actually be entered); only the ordering doctor changes the order. Released results are corrected through **Correct Result** with a reason; the doctor is notified and FHIR shows `corrected`. Normal ranges with automatic Low / High / Positive flags. Tests coded with **LOINC** |
-| **Billing** | Cash or insurance invoices through Odoo Invoicing; each item remembers the invoice line that charged it, so items added during an amendment are billed on a supplementary invoice and billed items cannot be changed silently |
+| **Billing** | Cash or insurance invoices through Odoo Invoicing; items without a price are flagged and need an explicit confirmation before being invoiced at 0; each item remembers the invoice line that charged it, so items added during an amendment are billed on a supplementary invoice and billed items cannot be changed silently |
 | **Security & audit** | Role-based and field-level access, admin-only amendments and reassignments (logged), tamper-proof access log covering form views, list views, exports, external scripts (XML-RPC / JSON-RPC) and API reads |
 | **Multi-company** | Patients, visits and their records belong to a company (branch); users only see their own companies |
 
@@ -45,7 +45,7 @@ Base URL: `http://<server>:<port>/fhir/R4/`
 | `DiagnosticReport` | Released lab results | `DiagnosticReport?patient=Patient/1` |
 | `AuditEvent` | Access log (admins only) | `AuditEvent?patient=Patient/1` |
 
-Search results are paged: `total` is the real number of matches, `_count` sets the page size (default 50, max 500) and the Bundle's `next` / `previous` links fetch the other pages. `_id` (comma-separated) is supported. Unsupported parameters are ignored and reported in an `OperationOutcome` entry, unless the client sends `Prefer: handling=strict`, which returns `400` instead.
+Search results are paged: `total` is the real number of matches, `_count` sets the page size (default 50, max 500) and the Bundle's `next` / `previous` links fetch the other pages. `_id` (comma-separated) is supported. **Unknown parameters are rejected with `400`** (a typo such as `famly=` must never return the whole patient list). A client that prefers the FHIR lenient behaviour can send `Prefer: handling=lenient`; unknown parameters are then ignored and reported in an `OperationOutcome` entry.
 
 Also available:
 - `GET /fhir/R4/metadata`: CapabilityStatement
@@ -108,6 +108,8 @@ Under **Hospital → Configuration**:
 - **Access Log**: who viewed, exported or amended which patient's records
 
 Starter prices are examples in **Kenyan shillings**. They are only loaded into a company that invoices in KES; for any other currency they stay empty. If you set up accounting (Kenya) after installing, use **Configuration → Load Example Prices (KES)**. Lab normal ranges are general adult values. Set your own before real use.
+
+**Access log size and retention.** Opening one record writes one row; a list page, search, multi-record read or export writes **one row for the whole page** (with the record IDs and the patients' MRNs), and the same page reopened by the same user within a minute is not logged again. Rows are kept for `hospital_management.access_log_retention_days` days (Settings → Technical → System Parameters; default 2190 = 6 years, `0` = forever) and a daily scheduled action deletes older rows. Set the period to match your organisation's records-retention policy.
 
 A patient with visits or appointments cannot be deleted (the medical record is kept); archive them instead. The access log stores its own copy of the patient's name and MRN, so it never blocks deleting a patient and stays readable afterwards.
 

@@ -16,6 +16,8 @@
                 <field name="patient_name" string="Patient"/>
                 <field name="patient_mrn"/>
                 <field name="record_name"/>
+                <field name="record_count" optional="show"/>
+                <field name="patient_mrns" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company" optional="show"/>
                 <field name="ip_address" optional="show"/>
                 <field name="detail" optional="show"/>
@@ -29,7 +31,8 @@
         <field name="arch" type="xml">
             <search>
                 <field name="patient_name"/>
-                <field name="patient_mrn"/>
+                <field name="patient_mrns" string="Patient MRN (incl. lists)"
+                       filter_domain="['|', ('patient_mrn', 'ilike', self), ('patient_mrns', 'ilike', self)]"/>
                 <field name="user_login"/>
                 <field name="ip_address"/>
                 <filter name="today" string="Today" domain="[('timestamp', '&gt;=', 'today')]"/>

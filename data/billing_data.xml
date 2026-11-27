@@ -6,6 +6,7 @@
         <record id="product_consult_outpatient" model="product.product">
             <field name="name">Outpatient Consultation</field>
             <field name="type">service</field>
+            <field name="list_price">0</field>
             <field name="default_code">CONS-OP</field>
             <field name="taxes_id" eval="[(5, 0, 0)]"/>
             <field name="purchase_ok" eval="False"/>
@@ -13,6 +14,7 @@
         <record id="product_consult_emergency" model="product.product">
             <field name="name">Emergency Consultation</field>
             <field name="type">service</field>
+            <field name="list_price">0</field>
             <field name="default_code">CONS-EM</field>
             <field name="taxes_id" eval="[(5, 0, 0)]"/>
             <field name="purchase_ok" eval="False"/>
@@ -20,6 +22,7 @@
         <record id="product_consult_inpatient" model="product.product">
             <field name="name">Inpatient Admission</field>
             <field name="type">service</field>
+            <field name="list_price">0</field>
             <field name="default_code">CONS-IP</field>
             <field name="taxes_id" eval="[(5, 0, 0)]"/>
             <field name="purchase_ok" eval="False"/>

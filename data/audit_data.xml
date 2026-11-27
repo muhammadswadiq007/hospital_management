@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- How long access-log rows are kept, in days (0 = forever). Default: 6 years.
+         Change it in Settings > Technical > System Parameters. Set by your organisation's
+         records-retention policy; check what applies to you. -->
+    <data noupdate="1">
+        <record id="param_access_log_retention" model="ir.config_parameter">
+            <field name="key">hospital_management.access_log_retention_days</field>
+            <field name="value">2190</field>
+        </record>
+    </data>
+
+    <record id="cron_access_log_retention" model="ir.cron">
+        <field name="name">Hospital: delete access-log rows past the retention period</field>
+        <field name="model_id" ref="model_hms_access_log"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_purge_old_rows()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

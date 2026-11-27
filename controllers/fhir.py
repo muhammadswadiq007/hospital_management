@@ -96,7 +96,7 @@ RESOURCES = {
     'AuditEvent': {
         'model': 'hms.access.log',
         'search': {
-            'patient': ('reference', lambda v: [('patient_id', '=', _ref_id(v))]),
+            'patient': ('reference', lambda v: request.env['hms.access.log']._search_patient_domain(_ref_id(v))),
             'agent': ('string', lambda v: [('user_login', '=', v)]),
         },
     },
@@ -173,6 +173,8 @@ class FhirController(http.Controller):
                 'mode': 'server',
                 'security': {
                     'description': 'Send an Odoo API key with scope "FHIR API" as "Authorization: Bearer <key>". '
+                                   'Unknown search parameters are rejected (400) unless the request has '
+                                   '"Prefer: handling=lenient". '
                                    'Results are limited by the user\'s hospital role, and every access is logged '
                                    '(see AuditEvent).',
                 },
@@ -232,7 +234,9 @@ class FhirController(http.Controller):
         if rtype not in RESOURCES:
             return _operation_outcome('not-supported', f'Resource type {rtype} is not supported', 404)
         conf = RESOURCES[rtype]
-        strict = 'handling=strict' in (request.httprequest.headers.get('Prefer') or '').replace(' ', '')
+        # Patient data: an unknown parameter (e.g. a typo like "famly") must NOT silently widen the search,
+        # so unknown parameters are rejected unless the client explicitly asks for lenient handling.
+        lenient = 'handling=lenient' in (request.httprequest.headers.get('Prefer') or '').replace(' ', '')
 
         # Result parameters (FHIR: _count, _id; plus _offset for the paging links we generate)
         try:
@@ -243,6 +247,9 @@ class FhirController(http.Controller):
         count = max(0, min(count, MAX_COUNT))
         offset = max(0, offset)
         id_param = params.pop('_id', None)
+        fmt = params.pop('_format', None)  # we only speak JSON; accept the common JSON spellings
+        if fmt and fmt not in ('json', 'application/json', 'application/fhir+json'):
+            return _operation_outcome('not-supported', f'_format={fmt} is not supported (JSON only)', 406)
 
         domain = list(conf.get('domain', []))
         if id_param:
@@ -254,8 +261,12 @@ class FhirController(http.Controller):
                 domain += conf['search'][name][1](value)
             else:
                 ignored.append(name)
-        if ignored and strict:
-            return _operation_outcome('not-supported', f'Unsupported search parameter(s): {", ".join(sorted(ignored))}', 400)
+        if ignored and not lenient:
+            supported = ', '.join(sorted(['_id', '_count', '_offset'] + list(conf['search'])))
+            return _operation_outcome(
+                'not-supported',
+                f'Unknown search parameter(s) for {rtype}: {", ".join(sorted(ignored))}. Supported: {supported}. '
+                f'(Send "Prefer: handling=lenient" to ignore unknown parameters instead.)', 400)
 
         try:
             Model = request.env[conf['model']]
